@@ -170,22 +170,55 @@ def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, li
             {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed, stub fallback used: {exc}"}
         ]
 
+
+
+def collect_hierarchy_ids(hierarchy: dict[str, Any]) -> set[str]:
+    ids: set[str] = set()
+
+    def walk(node: dict[str, Any]) -> None:
+        node_id = node.get("id")
+        if isinstance(node_id, str) and node_id:
+            ids.add(node_id)
+        for child in node.get("children", []) or []:
+            if isinstance(child, dict):
+                walk(child)
+
+    for child in hierarchy.get("children", []) or []:
+        if isinstance(child, dict):
+            walk(child)
+    return ids
+
+
+def map_api_floor_id(api_floor_id: str, hierarchy_ids: set[str]) -> str:
+    """Prefer exact API floor_id; if numeric, map to unique hierarchy id suffix match."""
+    if api_floor_id in hierarchy_ids:
+        return api_floor_id
+    if api_floor_id.isdigit():
+        matches = [hid for hid in hierarchy_ids if hid.endswith("_" + api_floor_id)]
+        if len(matches) == 1:
+            return matches[0]
+    return api_floor_id
+
 def build_floors_from_api_map(
     child_block_map: dict[str, list[dict[str, Any]]],
     source_label: str,
+    hierarchy_ids: set[str],
 ) -> tuple[dict[str, dict[str, Any]], int]:
     """Build floors section using only floors returned by API/stub map.
 
     Per request, include only floors that actually appear in child-blocks response.
-    Keep floor_id exactly as returned by API (no remapping to hierarchy ids).
+    Prefer API floor_id exact matches; remap numeric ids to unique hierarchy suffix matches.
     """
     floors: dict[str, dict[str, Any]] = {}
     for floor_id, blocks in child_block_map.items():
         if not isinstance(floor_id, str) or not floor_id:
             continue
+        mapped_floor_id = map_api_floor_id(floor_id, hierarchy_ids)
+        if mapped_floor_id != floor_id:
+            print(f"[childblocks] remapped API floor_id {floor_id} -> {mapped_floor_id}")
         if not blocks:
             continue
-        floors[floor_id] = {
+        floors[mapped_floor_id] = {
             "floor_blocks": blocks,
             "source": source_label,
         }
@@ -268,7 +301,8 @@ def build_export_context(
 
     child_block_map, errors = resolve_child_block_map(feeder_id=federation_id, use_api=use_api)
     source_label = "floor_childblocks_api" if use_api and not errors else "floor_childblocks_stub"
-    floors, discovered = build_floors_from_api_map(child_block_map, source_label=source_label)
+    hierarchy_ids = collect_hierarchy_ids(hierarchy)
+    floors, discovered = build_floors_from_api_map(child_block_map, source_label=source_label, hierarchy_ids=hierarchy_ids)
 
     profile_name = (profile or {}).get("profile_name", "")
     context = {
