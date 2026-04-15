@@ -1,136 +1,88 @@
-# xFloor JSON → Turtle Exporter (MVP, Domain-Agnostic + Profile-Driven)
+# xFloor Ontology Export MVP (Context-First Architecture)
 
-This project exports xFloor runtime JSON into a Protégé/WebProtégé-compatible Turtle (`.ttl`) file.
+This MVP uses a **two-step flow**:
 
-## What this exporter does
+1. Build a composed export context JSON (`ontology_export_context.json` style).
+2. Export Turtle (`.ttl`) from that composed context.
 
-This V1 exporter reads:
-- `hierarchy.json` (floor hierarchy)
-- `blocks.json` (runtime block definitions)
-- optional `profile.json` (domain typing rules)
+This keeps the exporter simple and closer to xFloor runtime reality.
 
-and writes:
-- `xfloor_export.ttl` (or any file path passed via `--out`)
+## Why `ontology_export_context.json` exists
 
-## Base xFloor ontology vocabulary (always exported)
+The context file merges all runtime sources into one export-ready object:
+- hierarchy (`hierarchy.json`)
+- global hub blocks (`global_blocks.json`)
+- per-floor effective blocks + metadata (from floor info API)
+- optional profile mapping (domain typing)
+- fetch errors (without aborting the whole run)
 
-The exporter always declares and uses the base xFloor ontology namespace:
-- `xf: https://xfloor.ai/ontology#`
-
-It also always binds:
-- `rdf:`
-- `rdfs:`
-- `owl:`
-- `xsd:`
-
-It always declares base classes/properties (e.g. `xf:Floor`, `xf:Block`, `xf:hasChildFloor`, `xf:hasGlobalBlock`, `xf:floorCategory`, etc.), even when no domain profile is provided.
-
-## Base ontology vs profile ontology
-
-- **Base xFloor ontology**: generic graph structure and metadata used for all exports.
-- **Optional domain profile**: domain-specific class typing rules loaded from JSON at runtime.
-
-The exporter core is domain-agnostic. It does **not** hardcode campus-specific semantics.
-
-## `floor_cat` behavior
-
-`floor_cat` is treated as a runtime semantic hint:
-- always exported as a literal (`xf:floorCategory`) when present
-- optionally mapped to a domain class using `profile.floor_category_map`
-- if `floor_cat` is missing or unmatched, exporter can fallback to `profile.hierarchy_levels` by depth (level 0 = root hub, level 1 = child, etc.)
-
-If no mapping is found, export still succeeds with generic xFloor typing (`xf:HubFloor` / `xf:ChildFloor` / `xf:NodeFloor`).
-
-Floor contact metadata fields are treated as mandatory in this version:
-- `xf:phoneNumber`
-- `xf:emailId`
-- `xf:location`
-
-If any of these are missing in input, exporter writes `"unknown"` as fallback so every floor has all three properties.
-
-## Federation/hub behavior in V1
-
-In this MVP, the top meaningful node under `root` **doubles as the federation root hub**.
-It is typed as:
-- `xf:HubFloor`
-
-All non-root floors are typed as:
-- `xf:ChildFloor` (if they have children)
-- `xf:NodeFloor` (if they are leaves)
-
-No separate federation wrapper individual is created in V1.
-
-## Global block behavior in V1
-
-All blocks from `blocks.json` are treated as global blocks attached to the federation root hub using:
-- `xf:hasGlobalBlock`
-
-(Using only one root-hub block relationship avoids duplicate block listings in V1 exports.)
-
-If `display_child_floors == "1"`, exporter sets:
-- `xf:inheritsToChildFloors true`
-- `xf:isDerivedBlock true`
-- `xf:isEditableByLocalOwner false`
-- `xf:originFloor <root_hub>`
-
-If `display_child_floors == "0"`, exporter sets:
-- `xf:inheritsToChildFloors false`
-- `xf:isDerivedBlock false`
-- `xf:isEditableByLocalOwner true`
-
-`xf:hasLocalBlock` is declared in vocabulary, but local child block export is not implemented in V1.
+Once this context exists, the Turtle exporter reads only that file.
 
 ## Files
 
-- `export_ttl.py`
+- `build_export_context.py` – preprocessing/composition step
+- `export_ttl.py` – Turtle exporter from composed context
 - `requirements.txt`
 - `sample_hierarchy.json`
-- `sample_blocks.json`
+- `sample_global_blocks.json`
 - `sample_profile.json`
+- `sample_export_context.json`
 - `sample_output.ttl`
 
 ## Requirements
 
 - Python 3.11+
+- `requests`
 - `rdflib`
 
-## Setup
+## Step 1: Build export context
 
 ```bash
-python -m venv .venv
-# Linux/macOS
-source .venv/bin/activate
-# Windows PowerShell
-# .venv\Scripts\Activate.ps1
-
-python -m pip install --upgrade pip
-pip install -r requirements.txt
+python build_export_context.py \
+  --hierarchy sample_hierarchy.json \
+  --global-blocks sample_global_blocks.json \
+  --profile sample_profile.json \
+  --base-url https://appfloor.in \
+  --token YOUR_TOKEN \
+  --out sample_export_context.json
 ```
 
-## Run (with profile)
+What it does:
+- traverses hierarchy and collects all `floor_id`s
+- calls `GET /api/memory/floor/info/{floor_id}` with Bearer token
+- collects floor metadata + `floor_blocks` (effective blocks in V1)
+- normalizes global blocks
+- writes one composed JSON context
+- logs success/failure counts and stores failures under `errors[]`
+
+## Step 2: Export Turtle
 
 ```bash
-python export_ttl.py --hierarchy sample_hierarchy.json --blocks sample_blocks.json --profile sample_profile.json --out sample_output.ttl
+python export_ttl.py --context sample_export_context.json --out sample_output.ttl
 ```
 
-## Run (without profile)
+What it does:
+- loads only composed context JSON
+- emits base xFloor ontology vocabulary (classes/properties)
+- uses hierarchy for floor structure and parent-child relations
+- uses floor map for API-preferred metadata (with safe fallback to hierarchy)
+- exports global blocks on root hub (`hasBlock`, `hasGlobalBlock`)
+- exports per-floor visible blocks (`hasBlock`) and approximates local blocks (`hasLocalBlock` if block not in global set)
+- applies optional profile-based floor and block typing via mappings
 
-```bash
-python export_ttl.py --hierarchy sample_hierarchy.json --blocks sample_blocks.json --out sample_output.ttl
-```
-
-## What V1 exports
-
-- floor/block individuals
-- hierarchy links (`xf:hasChildFloor`, `xf:hasParentFloor`)
-- federation root hub + global blocks
-- base metadata (`title`, `description`, `visibility`, `FID`, `floor_cat`, and mandatory `phone`, `email`, `location`, plus block flags)
-- optional domain class typing from profile mappings
-
-## Non-goals (V1)
+## V1 scope / non-goals
 
 - no import-back functionality
-- no full ACL ontology modeling
+- no full ACL ontology
 - no full validation ontology
-- no local child block export
-- no advanced OWL reasoning
+- no perfect inheritance reconstruction
+- local-vs-inherited is an approximation based on global block ID membership
+
+## Floor info API used
+
+`GET /api/memory/floor/info/{floor_id}`
+
+Auth:
+- `Authorization: Bearer <token>`
+
+The builder tolerates failures per floor and continues, recording issues in `errors`.

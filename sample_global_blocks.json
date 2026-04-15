@@ -17,7 +17,8 @@
       "display_child_floors": "0",
       "default_block": "0",
       "is_live_enabled": "1",
-      "analytics_enabled": "0"
+      "analytics_enabled": "0",
+      "user_allowed_to_post": "0"
     }
   ]
 }

@@ -8,81 +8,50 @@
 <https://xfloor.ai/ontology> a owl:Ontology ;
     rdfs:label "xFloor MVP Ontology Export" .
 
-xf:Federation a owl:Class .
-xf:Floor a owl:Class .
-xf:HubFloor a owl:Class .
-xf:LeafFloor a owl:Class .
-xf:ChildFloor a owl:Class .
-xf:NodeFloor a owl:Class .
-xf:Block a owl:Class .
-xf:User a owl:Class .
-
-campus:UniversityFloor a owl:Class .
-campus:InstitutionFloor a owl:Class .
-campus:DepartmentFloor a owl:Class .
-campus:FacultyFloor a owl:Class .
-campus:StudentFloor a owl:Class .
-campus:SectionFloor a owl:Class .
-campus:CourseFloor a owl:Class .
-campus:YearFloor a owl:Class .
-campus:NewsBlock a owl:Class .
-campus:QuizBlock a owl:Class .
-campus:PollBlock a owl:Class .
-campus:FeedBlock a owl:Class .
-
-xf:setspr_uni a campus:UniversityFloor, xf:HubFloor ;
-    xf:floorId "setspr_uni" ;
-    xf:title "SETSPR University" ;
-    xf:description "University federation root" ;
-    xf:visibility "private" ;
-    xf:isLeaf false ;
-    xf:floorCategory "University Floor" ;
+xf:setspr a campus:InstitutionFloor, xf:Federation, xf:Floor, xf:HubFloor ;
+    xf:floorId "setspr" ;
+    xf:runtimeFloorId "1765960956967" ;
+    xf:title "SETSPR" ;
+    xf:description "Main federation" ;
+    xf:visibility "PRIVATE" ;
+    xf:floorCategory "Institution Floor" ;
     xf:phoneNumber "9999999999" ;
-    xf:emailId "university@example.org" ;
-    xf:location "Mysuru" ;
-    xf:hasChildFloor xf:setspr_inst ;
+    xf:emailId "info@example.org" ;
+    xf:isLeaf false ;
+    xf:hasChildFloor xf:setspr_sdc_kan ;
+    xf:hasBlock xf:block_1776142090894,
+        xf:block_1776142091308 ;
     xf:hasGlobalBlock xf:block_1776142090894,
         xf:block_1776142091308 .
 
-xf:setspr_inst a campus:InstitutionFloor, xf:ChildFloor ;
-    xf:floorId "setspr_inst" ;
-    xf:title "SETSPR Institution" ;
-    xf:description "Institution node" ;
-    xf:visibility "private" ;
-    xf:isLeaf false ;
-    xf:floorCategory "Institution Floor" ;
-    xf:phoneNumber "8888888888" ;
-    xf:emailId "institution@example.org" ;
-    xf:location "Mysuru" ;
-    xf:hasParentFloor xf:setspr_uni ;
-    xf:hasChildFloor xf:setspr_sdc_kan .
-
-xf:setspr_sdc_kan a campus:DepartmentFloor, xf:ChildFloor ;
+xf:setspr_sdc_kan a campus:DepartmentFloor, xf:Floor, xf:HubFloor ;
     xf:floorId "setspr_sdc_kan" ;
+    xf:runtimeFloorId "1776142728171" ;
     xf:title "Department of Kannada" ;
     xf:description "Department of Kannada" ;
-    xf:visibility "private" ;
-    xf:isLeaf false ;
-    xf:runtimeFloorId "1776142728171" ;
+    xf:visibility "PRIVATE" ;
     xf:floorCategory "Department Floor" ;
-    xf:phoneNumber "7777777777" ;
-    xf:emailId "kannada@example.org" ;
-    xf:location "Arts Block" ;
-    xf:hasParentFloor xf:setspr_inst ;
-    xf:hasChildFloor xf:setspr_sdc_kan_venkaborao .
+    xf:phoneNumber "8888888888" ;
+    xf:emailId "kan@example.org" ;
+    xf:isLeaf false ;
+    xf:hasParentFloor xf:setspr ;
+    xf:hasChildFloor xf:setspr_sdc_kan_venkaborao ;
+    xf:hasBlock xf:block_1776142091308,
+        xf:block_kan_local_notice ;
+    xf:hasLocalBlock xf:block_kan_local_notice .
 
-xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:NodeFloor ;
+xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:Floor, xf:LeafFloor ;
     xf:floorId "setspr_sdc_kan_venkaborao" ;
+    xf:runtimeFloorId "1776143034000" ;
     xf:title "Dr Venkabo Rao M" ;
     xf:description "Department of Kannada" ;
-    xf:visibility "private" ;
-    xf:isLeaf true ;
-    xf:runtimeFloorId "1776143034000" ;
+    xf:visibility "PRIVATE" ;
     xf:floorCategory "Lecturer Floor" ;
-    xf:phoneNumber "6666666666" ;
+    xf:phoneNumber "7777777777" ;
     xf:emailId "venkabo.rao@example.org" ;
-    xf:location "Room 204" ;
-    xf:hasParentFloor xf:setspr_sdc_kan .
+    xf:isLeaf true ;
+    xf:hasParentFloor xf:setspr_sdc_kan ;
+    xf:hasBlock xf:block_1776142091308 .
 
 xf:block_1776142091308 a campus:FeedBlock, xf:Block ;
     xf:blockId "1776142091308" ;
@@ -95,7 +64,7 @@ xf:block_1776142091308 a campus:FeedBlock, xf:Block ;
     xf:isLiveEnabled false ;
     xf:analyticsEnabled false ;
     xf:userAllowedToPost false ;
-    xf:originFloor xf:setspr_uni .
+    xf:originFloor xf:setspr .
 
 xf:block_1776142090894 a campus:NewsBlock, xf:Block ;
     xf:blockId "1776142090894" ;
@@ -108,3 +77,8 @@ xf:block_1776142090894 a campus:NewsBlock, xf:Block ;
     xf:isLiveEnabled true ;
     xf:analyticsEnabled false ;
     xf:userAllowedToPost false .
+
+xf:block_kan_local_notice a xf:Block ;
+    xf:blockId "kan_local_notice" ;
+    xf:title "Dept Circular" ;
+    xf:blockTypeCode "9" .

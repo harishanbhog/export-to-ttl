@@ -2,55 +2,39 @@
   "name": "root",
   "children": [
     {
-      "name": "setspr_university",
-      "id": "setspr_uni",
+      "name": "setspr",
+      "id": "setspr",
       "type": "private",
-      "title": "SETSPR University",
-      "desc": "University federation root",
-      "floor_cat": "University Floor",
+      "title": "SETSPR",
+      "desc": "Main federation",
+      "floor_cat": "Institution Floor",
       "phone": "9999999999",
-      "email": "university@example.org",
-      "location": "Mysuru",
+      "email": "info@example.org",
       "children": [
         {
-          "name": "setspr_institution",
-          "id": "setspr_inst",
+          "name": "kan",
+          "id": "setspr_sdc_kan",
           "type": "private",
-          "title": "SETSPR Institution",
-          "desc": "Institution node",
-          "floor_cat": "Institution Floor",
+          "title": "Department of Kannada",
+          "desc": "Department of Kannada",
+          "floor_cat": "Department Floor",
           "phone": "8888888888",
-          "email": "institution@example.org",
-          "location": "Mysuru",
+          "email": "kan@example.org",
           "children": [
             {
-              "name": "kan",
-              "id": "setspr_sdc_kan",
+              "name": "venkaborao",
+              "id": "setspr_sdc_kan_venkaborao",
               "type": "private",
-              "title": "Department of Kannada",
+              "title": "Dr Venkabo Rao M",
               "desc": "Department of Kannada",
-              "floor_cat": "Department Floor",
+              "floor_cat": "Lecturer Floor",
               "phone": "7777777777",
-              "email": "kannada@example.org",
-              "location": "Arts Block",
-              "children": [
-                {
-                  "name": "venkaborao",
-                  "id": "setspr_sdc_kan_venkaborao",
-                  "type": "private",
-                  "title": "Dr Venkabo Rao M",
-                  "desc": "Department of Kannada",
-                  "floor_cat": "Lecturer Floor",
-                  "phone": "6666666666",
-                  "email": "venkabo.rao@example.org",
-                  "location": "Room 204",
-                  "children": [],
-                  "FID": "1776143034000"
-                }
-              ],
-              "FID": "1776142728171"
+              "email": "venkabo.rao@example.org",
+              "children": [],
+              "FID": "1776143034000"
             }
-          ]
+          ],
+          "FID": "1776142728171"
         }
       ]
     }
