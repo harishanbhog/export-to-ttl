@@ -47,13 +47,14 @@ python build_export_context.py \
 
 What it does:
 - traverses hierarchy and collects all `floor_id`s
-- calls `GET /api/memory/floor/childblocks/{hub_id}` once (hub/root floor)
-- maps returned child floor IDs to each floor's `floor_blocks`
+- uses a local stub for `GET /api/memory/floor/childblocks/{hub_id}` (no network call yet)
+- maps stubbed child floor IDs to each floor's `floor_blocks`
 - normalizes global blocks
 - writes one composed JSON context
 - logs success/failure and stores issues in `errors[]`
 
-> Current implementation uses a tolerant API stub wrapper: it attempts the API and falls back to an empty mapping if unavailable.
+> Current implementation is **stub-only**: it does not call network API yet.
+> Stubbed child floors with dummy blocks: `setspr_sdc_kan`, `setspr_sdc_kan_venkaborao`.
 
 ## Step 2: Export Turtle
 

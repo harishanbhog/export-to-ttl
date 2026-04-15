@@ -105,19 +105,8 @@
       "is_owner": "1",
       "avatar": null,
       "app_id": "campus-app",
-      "floor_blocks": [
-        {
-          "block_id": "1776142091308",
-          "title": "Feeds",
-          "type": "1"
-        },
-        {
-          "block_id": "1776142090894",
-          "title": "CampusNews",
-          "type": "0"
-        }
-      ],
-      "source": "floor_childblocks_api"
+      "floor_blocks": [],
+      "source": "floor_childblocks_stub"
     },
     "setspr_sdc_kan": {
       "floor_id": "setspr_sdc_kan",
@@ -140,7 +129,7 @@
           "type": "9"
         }
       ],
-      "source": "floor_childblocks_api"
+      "source": "floor_childblocks_stub"
     },
     "setspr_sdc_kan_venkaborao": {
       "floor_id": "setspr_sdc_kan_venkaborao",
@@ -156,9 +145,14 @@
           "block_id": "1776142091308",
           "title": "Feeds",
           "type": "1"
+        },
+        {
+          "block_id": "faculty_local_notes",
+          "title": "My Notes",
+          "type": "7"
         }
       ],
-      "source": "floor_childblocks_api"
+      "source": "floor_childblocks_stub"
     }
   },
   "errors": []
