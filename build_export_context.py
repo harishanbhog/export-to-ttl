@@ -10,7 +10,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-import requests
 
 
 def load_json(path: str) -> dict[str, Any]:
@@ -68,6 +67,11 @@ def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: i
 
     API: <baseURL>/floor/child/blocks/{feeder_id}
     """
+    try:
+        import requests  # lazy import; only needed in --use-api mode
+    except ModuleNotFoundError as exc:
+        raise RuntimeError("requests is required only for --use-api mode") from exc
+
     endpoint = f"{base_url.rstrip('/')}/floor/child/blocks/{feeder_id}"
     headers = {"Authorization": f"Bearer {token}"}
     response = requests.get(endpoint, headers=headers, timeout=timeout)

@@ -30,8 +30,8 @@ Once this context exists, the Turtle exporter reads only that file.
 ## Requirements
 
 - Python 3.11+
-- `requests`
 - `rdflib`
+- `requests` (needed only when running `build_export_context.py --use-api`)
 
 ## Step 1: Build export context
 
