@@ -25,9 +25,51 @@ It intentionally keeps the model small and readable:
 
 ```bash
 python -m venv .venv
+# Linux/macOS
 source .venv/bin/activate
+# Windows (PowerShell)
+# .venv\Scripts\Activate.ps1
+
+python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
+
+## If `pip install -r requirements.txt` fails with `No matching distribution found`
+
+If you also see connection errors such as `getaddrinfo failed`, that usually means **network/DNS/proxy access to PyPI is blocked**, not that `rdflib` is unavailable.
+
+Try the following in order:
+
+1. Verify Python version:
+   ```bash
+   python --version
+   ```
+   Must be 3.11+ for this MVP.
+
+2. Test DNS/network to PyPI:
+   ```bash
+   nslookup pypi.org
+   ```
+
+3. If your environment uses a corporate proxy, configure pip:
+   ```bash
+   pip install --proxy http://USERNAME:PASSWORD@PROXY_HOST:PORT -r requirements.txt
+   ```
+
+4. Use an internal mirror (if your org provides one):
+   ```bash
+   pip install --index-url https://<your-mirror>/simple -r requirements.txt
+   ```
+
+5. Offline install using wheel file:
+   - On a machine with internet:
+     ```bash
+     pip download rdflib -d wheels
+     ```
+   - Copy `wheels/` to your target machine, then:
+     ```bash
+     pip install --no-index --find-links wheels rdflib
+     ```
 
 ## Run
 
