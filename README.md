@@ -41,7 +41,6 @@ python build_export_context.py \
   --global-blocks sample_global_blocks.json \
   --profile sample_profile.json \
   --base-url https://appfloor.in \
-  --token YOUR_TOKEN \
   --out sample_export_context.json
 ```
 
@@ -55,6 +54,16 @@ What it does:
 
 > Current implementation is **stub-only**: it does not call network API yet.
 > Stubbed child floors with dummy blocks: `setspr_sdc_kan`, `setspr_sdc_kan_venkaborao`.
+
+Token loading order for `build_export_context.py`:
+1. `--token` CLI argument (optional override)
+2. environment variables: `XFLOOR_TOKEN`, `TOKEN`, `BEARER_TOKEN`
+3. `.env` file keys: `XFLOOR_TOKEN`, `TOKEN`, `BEARER_TOKEN`
+
+Example `.env`:
+```
+XFLOOR_TOKEN=YOUR_TOKEN
+```
 
 ## Step 2: Export Turtle
 
