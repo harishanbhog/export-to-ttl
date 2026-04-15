@@ -8,12 +8,12 @@
 <https://xfloor.ai/ontology> a owl:Ontology ;
     rdfs:label "xFloor MVP Ontology Export" .
 
-xf:setspr a campus:InstitutionFloor, xf:Federation, xf:Floor, xf:HubFloor ;
+xf:setspr a campus:UniversityFloor, xf:Federation, xf:Floor, xf:HubFloor ;
     xf:floorId "setspr" ;
-    xf:runtimeFloorId "1765960956967" ;
+    xf:runtimeFloorId "" ;
     xf:title "SETSPR" ;
     xf:description "Main federation" ;
-    xf:visibility "PRIVATE" ;
+    xf:visibility "private" ;
     xf:floorCategory "Institution Floor" ;
     xf:phoneNumber "9999999999" ;
     xf:emailId "info@example.org" ;
@@ -24,12 +24,12 @@ xf:setspr a campus:InstitutionFloor, xf:Federation, xf:Floor, xf:HubFloor ;
     xf:hasGlobalBlock xf:block_1776142090894,
         xf:block_1776142091308 .
 
-xf:setspr_sdc_kan a campus:DepartmentFloor, xf:Floor, xf:HubFloor ;
+xf:setspr_sdc_kan a campus:InstitutionFloor, xf:ChildFloor, xf:Floor ;
     xf:floorId "setspr_sdc_kan" ;
     xf:runtimeFloorId "1776142728171" ;
     xf:title "Department of Kannada" ;
     xf:description "Department of Kannada" ;
-    xf:visibility "PRIVATE" ;
+    xf:visibility "private" ;
     xf:floorCategory "Department Floor" ;
     xf:phoneNumber "8888888888" ;
     xf:emailId "kan@example.org" ;
@@ -40,12 +40,12 @@ xf:setspr_sdc_kan a campus:DepartmentFloor, xf:Floor, xf:HubFloor ;
         xf:block_kan_local_notice ;
     xf:hasLocalBlock xf:block_kan_local_notice .
 
-xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:Floor, xf:LeafFloor ;
+xf:setspr_sdc_kan_venkaborao a campus:DepartmentFloor, xf:Floor, xf:NodeFloor ;
     xf:floorId "setspr_sdc_kan_venkaborao" ;
     xf:runtimeFloorId "1776143034000" ;
     xf:title "Dr Venkabo Rao M" ;
     xf:description "Department of Kannada" ;
-    xf:visibility "PRIVATE" ;
+    xf:visibility "private" ;
     xf:floorCategory "Lecturer Floor" ;
     xf:phoneNumber "7777777777" ;
     xf:emailId "venkabo.rao@example.org" ;
@@ -84,7 +84,6 @@ xf:block_kan_local_notice a xf:Block ;
     xf:blockId "kan_local_notice" ;
     xf:title "Dept Circular" ;
     xf:blockTypeCode "9" .
-
 
 xf:block_faculty_local_notes a xf:Block ;
     xf:blockId "faculty_local_notes" ;

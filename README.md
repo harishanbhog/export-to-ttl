@@ -80,6 +80,18 @@ What it does:
 - exports per-floor visible blocks (`hasBlock`) and approximates local blocks (`hasLocalBlock` if block ID not in global set)
 - applies optional profile-based floor and block typing via mappings
 
+
+Campus profile typing rule in exporter (level-based):
+- level 0 -> `campus:UniversityFloor`
+- level 1 -> `campus:InstitutionFloor`
+- level 2 -> `campus:DepartmentFloor`
+- level 3+ -> `campus:FacultyFloor`
+
+Also, xFloor structural typing is:
+- federation/root floor -> `xf:HubFloor`
+- non-root with children -> `xf:ChildFloor`
+- non-root leaf -> `xf:NodeFloor`
+
 ## V1 scope / non-goals
 
 - no import-back functionality

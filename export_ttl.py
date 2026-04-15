@@ -13,7 +13,7 @@ from rdflib import Graph, Literal, Namespace, OWL, RDF, RDFS, URIRef, XSD
 
 XF = Namespace("https://xfloor.ai/ontology#")
 
-BASE_CLASSES = [XF.Federation, XF.Floor, XF.HubFloor, XF.LeafFloor, XF.Block, XF.User]
+BASE_CLASSES = [XF.Federation, XF.Floor, XF.HubFloor, XF.LeafFloor, XF.ChildFloor, XF.NodeFloor, XF.Block, XF.User]
 BASE_OBJECT_PROPERTIES = [
     XF.hasRootHub,
     XF.hasChildFloor,
@@ -129,7 +129,7 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
     one_local_block_uri: URIRef | None = None
 
     # first pass floors + hierarchy
-    def walk(node: dict[str, Any], parent_uri: URIRef | None = None, top_under_root: bool = False) -> None:
+    def walk(node: dict[str, Any], parent_uri: URIRef | None = None, top_under_root: bool = False, depth: int = 0) -> None:
         nonlocal floor_count, root_hub_uri
 
         floor_id = node.get("id")
@@ -143,10 +143,12 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
         floor_api = floor_map.get(floor_id_text, {}) if isinstance(floor_map.get(floor_id_text), dict) else {}
 
         graph.add((floor_uri, RDF.type, XF.Floor))
-        graph.add((floor_uri, RDF.type, XF.LeafFloor if is_leaf else XF.HubFloor))
         if top_under_root:
+            graph.add((floor_uri, RDF.type, XF.HubFloor))
             graph.add((floor_uri, RDF.type, XF.Federation))
             root_hub_uri = floor_uri
+        else:
+            graph.add((floor_uri, RDF.type, XF.ChildFloor if not is_leaf else XF.NodeFloor))
 
         graph.add((floor_uri, XF.floorId, Literal(floor_id_text)))
         graph.add((floor_uri, XF.isLeaf, Literal(is_leaf, datatype=XSD.boolean)))
@@ -165,7 +167,19 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
         add_optional_literal(graph, floor_uri, XF.phoneNumber, floor_api.get("phone") or node.get("phone"))
         add_optional_literal(graph, floor_uri, XF.emailId, floor_api.get("email") or node.get("email"))
 
-        mapped_floor_curie = floor_category_map.get(floor_category) if isinstance(floor_category, str) else None
+        profile_name = str(profile.get("profile_name", "")).strip().lower() if isinstance(profile, dict) else ""
+        campus_level_map = {
+            0: "campus:UniversityFloor",
+            1: "campus:InstitutionFloor",
+            2: "campus:DepartmentFloor",
+            3: "campus:FacultyFloor",
+        }
+        mapped_floor_curie = None
+        if profile_name == "campus":
+            mapped_floor_curie = campus_level_map.get(depth if depth <= 3 else 3)
+        if mapped_floor_curie is None and isinstance(floor_category, str):
+            mapped_floor_curie = floor_category_map.get(floor_category)
+
         mapped_floor_uri = resolve_curie(mapped_floor_curie, prefix_map) if isinstance(mapped_floor_curie, str) else None
         if mapped_floor_uri is not None:
             graph.add((floor_uri, RDF.type, mapped_floor_uri))
@@ -178,11 +192,11 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
 
         for child in children:
             if isinstance(child, dict):
-                walk(child, parent_uri=floor_uri)
+                walk(child, parent_uri=floor_uri, depth=depth + 1)
 
     for child in hierarchy.get("children", []) or []:
         if isinstance(child, dict):
-            walk(child, top_under_root=True)
+            walk(child, top_under_root=True, depth=0)
 
     # export global blocks + attach root
     global_block_ids: set[str] = set()
@@ -272,7 +286,7 @@ def main() -> None:
     print("\nExample snippet (one floor + one global block + one local block):")
     print("""@prefix xf: <https://xfloor.ai/ontology#> .
 
-xf:setspr a xf:Floor, xf:HubFloor, xf:Federation .
+xf:setspr a xf:Floor, xf:HubFloor, xf:Federation, campus:UniversityFloor .
 xf:setspr xf:hasGlobalBlock xf:block_1776142091308 .
 xf:setspr_sdc_kan xf:hasLocalBlock xf:block_kan_local_notice .""")
 
