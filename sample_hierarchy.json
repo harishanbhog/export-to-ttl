@@ -1,0 +1,33 @@
+{
+  "name": "root",
+  "children": [
+    {
+      "name": "setspr",
+      "id": "setspr",
+      "type": "private",
+      "title": "",
+      "desc": "",
+      "children": [
+        {
+          "name": "kan",
+          "id": "setspr_sdc_kan",
+          "type": "private",
+          "title": "Department of Kannada",
+          "desc": "Department of Kannada",
+          "children": [
+            {
+              "name": "venkaborao",
+              "id": "setspr_sdc_kan_venkaborao",
+              "type": "private",
+              "title": "Dr Venkabo Rao M",
+              "desc": "Department of Kannada",
+              "children": [],
+              "FID": "1776143034000"
+            }
+          ],
+          "FID": "1776142728171"
+        }
+      ]
+    }
+  ]
+}
