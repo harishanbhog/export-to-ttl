@@ -170,44 +170,25 @@ def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, li
             {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed, stub fallback used: {exc}"}
         ]
 
-def build_floors_from_hierarchy(
-    hierarchy: dict[str, Any],
+def build_floors_from_api_map(
     child_block_map: dict[str, list[dict[str, Any]]],
     source_label: str,
 ) -> tuple[dict[str, dict[str, Any]], int]:
+    """Build floors section using only floors returned by API/stub map.
+
+    Per request, include only floors that actually appear in child-blocks response.
+    """
     floors: dict[str, dict[str, Any]] = {}
-    discovered = 0
-
-    def walk(node: dict[str, Any]) -> None:
-        nonlocal discovered
-        floor_id = node.get("id")
-        if floor_id:
-            floor_id_text = str(floor_id)
-            discovered += 1
-            floors[floor_id_text] = {
-                "floor_id": floor_id_text,
-                "floor_uid": str(node.get("FID", "")),
-                "title": node.get("title") or node.get("name") or floor_id_text,
-                "details": node.get("desc", ""),
-                "floor_type": node.get("type", ""),
-                "is_owner": "",
-                "avatar": None,
-                "app_id": None,
-                "floor_blocks": child_block_map.get(floor_id_text, []),
-                "source": source_label,
-            }
-
-        for child in node.get("children", []) or []:
-            if isinstance(child, dict):
-                walk(child)
-
-    for child in hierarchy.get("children", []) or []:
-        if isinstance(child, dict):
-            walk(child)
-
-    return floors, discovered
-
-
+    for floor_id, blocks in child_block_map.items():
+        if not isinstance(floor_id, str):
+            continue
+        if not blocks:
+            continue
+        floors[floor_id] = {
+            "floor_blocks": blocks,
+            "source": source_label,
+        }
+    return floors, len(floors)
 
 
 def load_dotenv_values(dotenv_path: str = ".env") -> dict[str, str]:
@@ -252,6 +233,28 @@ def resolve_api_settings() -> dict[str, str]:
         "app_id": pick("APP_ID", "XFLOOR_APP_ID"),
     }
 
+
+
+def resolve_federation_id(hierarchy: dict[str, Any]) -> str:
+    """Pick top meaningful federation floor id under root.
+
+    If first child id looks like a root wrapper (e.g. root_*), prefer its first child id.
+    """
+    children = hierarchy.get("children", []) or []
+    if not children or not isinstance(children[0], dict):
+        return ""
+
+    top = children[0]
+    top_id = str(top.get("id", ""))
+    if top_id and not top_id.startswith("root_"):
+        return top_id
+
+    grand = top.get("children", []) or []
+    if grand and isinstance(grand[0], dict):
+        return str(grand[0].get("id", ""))
+
+    return top_id
+
 def build_export_context(
     hierarchy: dict[str, Any],
     global_blocks_raw: dict[str, Any],
@@ -260,14 +263,11 @@ def build_export_context(
 ) -> tuple[dict[str, Any], int, int, int]:
     global_blocks = normalize_global_blocks(global_blocks_raw)
 
-    root_children = hierarchy.get("children", []) or []
-    federation_id = ""
-    if root_children and isinstance(root_children[0], dict):
-        federation_id = str(root_children[0].get("id", ""))
+    federation_id = resolve_federation_id(hierarchy)
 
     child_block_map, errors = resolve_child_block_map(feeder_id=federation_id, use_api=use_api)
     source_label = "floor_childblocks_api" if use_api and not errors else "floor_childblocks_stub"
-    floors, discovered = build_floors_from_hierarchy(hierarchy, child_block_map, source_label=source_label)
+    floors, discovered = build_floors_from_api_map(child_block_map, source_label=source_label)
 
     profile_name = (profile or {}).get("profile_name", "")
     context = {

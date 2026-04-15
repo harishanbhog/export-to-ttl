@@ -105,6 +105,7 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
     floor_map = context.get("floors", {}) if isinstance(context.get("floors"), dict) else {}
     global_blocks = context.get("global_blocks", []) if isinstance(context.get("global_blocks"), list) else []
     profile = context.get("profile", {}) if isinstance(context.get("profile"), dict) else {}
+    federation_id = str(context.get("federation_id", ""))
 
     graph = Graph()
     graph.bind("xf", XF)
@@ -138,7 +139,7 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
     one_global_block_uri: URIRef | None = None
 
     # first pass floors + hierarchy
-    def walk(node: dict[str, Any], parent_uri: URIRef | None = None, top_under_root: bool = False, depth: int = 0) -> None:
+    def walk(node: dict[str, Any], parent_uri: URIRef | None = None, depth: int = 0) -> None:
         nonlocal floor_count, root_hub_uri
 
         floor_id = node.get("id")
@@ -151,7 +152,8 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
         is_leaf = len(children) == 0
         floor_api = floor_map.get(floor_id_text, {}) if isinstance(floor_map.get(floor_id_text), dict) else {}
 
-        if top_under_root:
+        is_federation_root = federation_id and floor_id_text == federation_id
+        if is_federation_root:
             graph.add((floor_uri, RDF.type, XF.HubFloor))
             graph.add((floor_uri, RDF.type, XF.Federation))
             root_hub_uri = floor_uri
@@ -205,7 +207,15 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
 
     for child in hierarchy.get("children", []) or []:
         if isinstance(child, dict):
-            walk(child, top_under_root=True, depth=0)
+            walk(child, depth=0)
+
+
+    # Fallback: if federation_id wasn't found during walk, use first floor id in hierarchy.
+    if root_hub_uri is None:
+        for child in hierarchy.get("children", []) or []:
+            if isinstance(child, dict) and child.get("id"):
+                root_hub_uri = XF[sanitize_fragment(str(child.get("id")), "floor")]
+                break
 
     # export global blocks + attach root
     global_block_ids: set[str] = set()

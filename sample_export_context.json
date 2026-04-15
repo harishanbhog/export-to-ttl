@@ -1,6 +1,6 @@
 {
   "version": "v1",
-  "generated_at": "2026-04-15T14:11:34.566017+00:00",
+  "generated_at": "2026-04-15T14:22:45.939469+00:00",
   "federation_id": "setspr",
   "category": "campus",
   "profile_name": "campus",
@@ -98,27 +98,7 @@
     }
   ],
   "floors": {
-    "setspr": {
-      "floor_id": "setspr",
-      "floor_uid": "",
-      "title": "SETSPR",
-      "details": "Main federation",
-      "floor_type": "private",
-      "is_owner": "",
-      "avatar": null,
-      "app_id": null,
-      "floor_blocks": [],
-      "source": "floor_childblocks_stub"
-    },
     "setspr_sdc_kan": {
-      "floor_id": "setspr_sdc_kan",
-      "floor_uid": "1776142728171",
-      "title": "Department of Kannada",
-      "details": "Department of Kannada",
-      "floor_type": "private",
-      "is_owner": "",
-      "avatar": null,
-      "app_id": null,
       "floor_blocks": [
         {
           "block_id": "1776142091308",
@@ -134,14 +114,6 @@
       "source": "floor_childblocks_stub"
     },
     "setspr_sdc_kan_venkaborao": {
-      "floor_id": "setspr_sdc_kan_venkaborao",
-      "floor_uid": "1776143034000",
-      "title": "Dr Venkabo Rao M",
-      "details": "Department of Kannada",
-      "floor_type": "private",
-      "is_owner": "",
-      "avatar": null,
-      "app_id": null,
       "floor_blocks": [
         {
           "block_id": "1776142091308",

@@ -70,3 +70,6 @@ python export_ttl.py --context sample_export_context.json --out sample_output.tt
 ## Notes
 - Stub mode remains default for offline runs.
 - This is MVP behavior; inheritance/local semantics are still approximated.
+
+
+Context `floors` section now contains only floors returned by child-blocks provider (non-empty block lists), not all hierarchy floors.
