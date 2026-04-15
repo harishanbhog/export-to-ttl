@@ -48,13 +48,18 @@ It is typed as:
 - `xf:Floor`
 - `xf:HubFloor`
 
+All non-root floors are typed as:
+- `xf:ChildFloor` (if they have children)
+- `xf:NodeFloor` (if they are leaves)
+
 No separate federation wrapper individual is created in V1.
 
 ## Global block behavior in V1
 
 All blocks from `blocks.json` are treated as global blocks attached to the federation root hub using:
-- `xf:hasBlock`
 - `xf:hasGlobalBlock`
+
+(Using only one root-hub block relationship avoids duplicate block listings in V1 exports.)
 
 If `display_child_floors == "1"`, exporter sets:
 - `xf:inheritsToChildFloors true`

@@ -12,48 +12,23 @@ xf:Federation a owl:Class .
 xf:Floor a owl:Class .
 xf:HubFloor a owl:Class .
 xf:LeafFloor a owl:Class .
+xf:ChildFloor a owl:Class .
+xf:NodeFloor a owl:Class .
 xf:Block a owl:Class .
 xf:User a owl:Class .
 
+campus:UniversityFloor a owl:Class .
 campus:InstitutionFloor a owl:Class .
 campus:DepartmentFloor a owl:Class .
 campus:FacultyFloor a owl:Class .
 campus:StudentFloor a owl:Class .
 campus:SectionFloor a owl:Class .
 campus:CourseFloor a owl:Class .
+campus:YearFloor a owl:Class .
 campus:NewsBlock a owl:Class .
 campus:QuizBlock a owl:Class .
 campus:PollBlock a owl:Class .
 campus:FeedBlock a owl:Class .
-
-xf:hasRootHub a owl:ObjectProperty .
-xf:hasChildFloor a owl:ObjectProperty .
-xf:hasParentFloor a owl:ObjectProperty .
-xf:hasBlock a owl:ObjectProperty .
-xf:hasGlobalBlock a owl:ObjectProperty .
-xf:hasLocalBlock a owl:ObjectProperty .
-xf:originFloor a owl:ObjectProperty .
-xf:managedBy a owl:ObjectProperty .
-xf:hasCoOwner a owl:ObjectProperty .
-
-xf:floorId a owl:DatatypeProperty .
-xf:runtimeFloorId a owl:DatatypeProperty .
-xf:blockId a owl:DatatypeProperty .
-xf:title a owl:DatatypeProperty .
-xf:description a owl:DatatypeProperty .
-xf:visibility a owl:DatatypeProperty .
-xf:isLeaf a owl:DatatypeProperty .
-xf:floorCategory a owl:DatatypeProperty .
-xf:phoneNumber a owl:DatatypeProperty .
-xf:emailId a owl:DatatypeProperty .
-xf:blockTypeCode a owl:DatatypeProperty .
-xf:inheritsToChildFloors a owl:DatatypeProperty .
-xf:isDefaultBlock a owl:DatatypeProperty .
-xf:isLiveEnabled a owl:DatatypeProperty .
-xf:analyticsEnabled a owl:DatatypeProperty .
-xf:userAllowedToPost a owl:DatatypeProperty .
-xf:isDerivedBlock a owl:DatatypeProperty .
-xf:isEditableByLocalOwner a owl:DatatypeProperty .
 
 xf:setspr a campus:InstitutionFloor, xf:Federation, xf:Floor, xf:HubFloor ;
     xf:floorId "setspr" ;
@@ -65,12 +40,10 @@ xf:setspr a campus:InstitutionFloor, xf:Federation, xf:Floor, xf:HubFloor ;
     xf:phoneNumber "9999999999" ;
     xf:emailId "info@example.org" ;
     xf:hasChildFloor xf:setspr_sdc_kan ;
-    xf:hasBlock xf:block_1776142090894,
-        xf:block_1776142091308 ;
     xf:hasGlobalBlock xf:block_1776142090894,
         xf:block_1776142091308 .
 
-xf:setspr_sdc_kan a campus:DepartmentFloor, xf:Floor, xf:HubFloor ;
+xf:setspr_sdc_kan a campus:DepartmentFloor, xf:ChildFloor, xf:Floor ;
     xf:floorId "setspr_sdc_kan" ;
     xf:title "Department of Kannada" ;
     xf:description "Department of Kannada" ;
@@ -81,7 +54,7 @@ xf:setspr_sdc_kan a campus:DepartmentFloor, xf:Floor, xf:HubFloor ;
     xf:hasParentFloor xf:setspr ;
     xf:hasChildFloor xf:setspr_sdc_kan_venkaborao .
 
-xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:Floor, xf:LeafFloor ;
+xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:Floor, xf:NodeFloor ;
     xf:floorId "setspr_sdc_kan_venkaborao" ;
     xf:title "Dr Venkabo Rao M" ;
     xf:description "Department of Kannada" ;

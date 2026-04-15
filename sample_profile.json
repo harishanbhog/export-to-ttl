@@ -3,12 +3,14 @@
   "namespace_prefix": "campus",
   "namespace_uri": "https://xfloor.ai/campus#",
   "floor_category_map": {
+    "University Floor": "campus:UniversityFloor",
     "Institution Floor": "campus:InstitutionFloor",
     "Department Floor": "campus:DepartmentFloor",
     "Lecturer Floor": "campus:FacultyFloor",
     "Student Floor": "campus:StudentFloor",
     "Section Floor": "campus:SectionFloor",
-    "Course Floor": "campus:CourseFloor"
+    "Course Floor": "campus:CourseFloor",
+    "Year Floor": "campus:YearFloor"
   },
   "block_title_map": {
     "CampusNews": "campus:NewsBlock",
@@ -17,12 +19,14 @@
     "Feeds": "campus:FeedBlock"
   },
   "declare_classes": [
+    "campus:UniversityFloor",
     "campus:InstitutionFloor",
     "campus:DepartmentFloor",
     "campus:FacultyFloor",
     "campus:StudentFloor",
     "campus:SectionFloor",
     "campus:CourseFloor",
+    "campus:YearFloor",
     "campus:NewsBlock",
     "campus:QuizBlock",
     "campus:PollBlock",

@@ -18,6 +18,8 @@ BASE_CLASSES = [
     XF.Floor,
     XF.HubFloor,
     XF.LeafFloor,
+    XF.ChildFloor,
+    XF.NodeFloor,
     XF.Block,
     XF.User,
 ]
@@ -176,10 +178,12 @@ def export_graph(
         is_leaf = len(children) == 0
 
         graph.add((floor_uri, RDF.type, XF.Floor))
-        graph.add((floor_uri, RDF.type, XF.LeafFloor if is_leaf else XF.HubFloor))
         if top_under_root:
+            graph.add((floor_uri, RDF.type, XF.HubFloor))
             graph.add((floor_uri, RDF.type, XF.Federation))
             root_hub_uri = floor_uri
+        else:
+            graph.add((floor_uri, RDF.type, XF.NodeFloor if is_leaf else XF.ChildFloor))
 
         graph.add((floor_uri, XF.floorId, Literal(str(floor_id))))
         graph.add((floor_uri, XF.isLeaf, Literal(is_leaf, datatype=XSD.boolean)))
@@ -216,6 +220,8 @@ def export_graph(
         if isinstance(child, dict):
             walk_floor(child, top_under_root=True)
 
+    seen_block_ids: set[str] = set()
+
     for block in blocks_payload.get("blocks", []):
         if not isinstance(block, dict):
             continue
@@ -224,9 +230,14 @@ def export_graph(
         if not bid:
             continue
 
-        block_uri = XF[f"block_{sanitize_fragment(str(bid), 'block')}"]
+        bid_text = str(bid)
+        if bid_text in seen_block_ids:
+            continue
+        seen_block_ids.add(bid_text)
+
+        block_uri = XF[f"block_{sanitize_fragment(bid_text, 'block')}"]
         graph.add((block_uri, RDF.type, XF.Block))
-        graph.add((block_uri, XF.blockId, Literal(str(bid))))
+        graph.add((block_uri, XF.blockId, Literal(bid_text)))
         add_optional_literal(graph, block_uri, XF.title, block.get("title"))
         add_optional_literal(graph, block_uri, XF.blockTypeCode, block.get("type"))
 
@@ -248,7 +259,6 @@ def export_graph(
                 graph.add((block_uri, RDF.type, mapped_uri))
 
         if root_hub_uri is not None:
-            graph.add((root_hub_uri, XF.hasBlock, block_uri))
             graph.add((root_hub_uri, XF.hasGlobalBlock, block_uri))
             if inherits:
                 graph.add((block_uri, XF.originFloor, root_hub_uri))
