@@ -42,18 +42,25 @@ python build_export_context.py \
   --profile sample_profile.json \
   --base-url https://appfloor.in \
   --out sample_export_context.json
+  # add --use-api to call real API handler
 ```
 
 What it does:
 - traverses hierarchy and collects all `floor_id`s
-- uses a local stub for `GET /api/memory/floor/childblocks/{hub_id}` (no network call yet)
+- uses a local stub by default for child blocks
+- optional real API handler: `GET <baseURL>/floor/child/blocks/{feeder_id}` via `--use-api`
 - maps stubbed child floor IDs to each floor's `floor_blocks`
 - normalizes global blocks
 - writes one composed JSON context
 - logs success/failure and stores issues in `errors[]`
 
-> Current implementation is **stub-only**: it does not call network API yet.
+> Default implementation is **stub mode**.
 > Stubbed child floors with dummy blocks: `setspr_sdc_kan`, `setspr_sdc_kan_venkaborao`.
+
+Real API mode (with fallback to stub on failure):
+```bash
+python build_export_context.py --hierarchy sample_hierarchy.json --global-blocks sample_global_blocks.json --profile sample_profile.json --base-url https://appfloor.in --out sample_export_context.json --use-api
+```
 
 Token loading order for `build_export_context.py`:
 1. `--token` CLI argument (optional override)

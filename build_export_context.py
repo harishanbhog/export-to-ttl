@@ -10,6 +10,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import requests
+
 
 def load_json(path: str) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -58,6 +60,63 @@ def fetch_child_blocks_stub(base_url: str, token: str, hub_id: str) -> dict[str,
         ],
     }
 
+
+
+
+def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: int = 15) -> dict[str, list[dict[str, Any]]]:
+    """Real API handler for child blocks.
+
+    API: <baseURL>/floor/child/blocks/{feeder_id}
+    """
+    endpoint = f"{base_url.rstrip('/')}/floor/child/blocks/{feeder_id}"
+    headers = {"Authorization": f"Bearer {token}"}
+    response = requests.get(endpoint, headers=headers, timeout=timeout)
+    response.raise_for_status()
+    payload = response.json()
+
+    # Response shape expected same as stub: {floor_id: {floor_blocks:[...]}} or list of such maps
+    normalized: dict[str, list[dict[str, Any]]] = {}
+
+    if isinstance(payload, dict) and "data" in payload:
+        payload = payload.get("data")
+
+    def norm_blocks(items: Any) -> list[dict[str, Any]]:
+        out: list[dict[str, Any]] = []
+        for b in items or []:
+            if not isinstance(b, dict):
+                continue
+            bid = b.get("block_id") or b.get("BID")
+            if not bid:
+                continue
+            out.append({"block_id": str(bid), "title": b.get("title", ""), "type": str(b.get("type", ""))})
+        return out
+
+    if isinstance(payload, dict):
+        for fid, obj in payload.items():
+            if isinstance(fid, str) and isinstance(obj, dict):
+                normalized[fid] = norm_blocks(obj.get("floor_blocks", []))
+    elif isinstance(payload, list):
+        for entry in payload:
+            if not isinstance(entry, dict):
+                continue
+            for fid, obj in entry.items():
+                if isinstance(fid, str) and isinstance(obj, dict):
+                    normalized[fid] = norm_blocks(obj.get("floor_blocks", []))
+
+    return normalized
+
+
+def resolve_child_block_map(base_url: str, token: str, feeder_id: str, use_api: bool) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, str]]]:
+    """Use API when requested, otherwise stub; never raise."""
+    if not use_api:
+        return fetch_child_blocks_stub(base_url=base_url, token=token, hub_id=feeder_id), []
+
+    try:
+        return fetch_child_blocks_api(base_url=base_url, token=token, feeder_id=feeder_id), []
+    except Exception as exc:  # noqa: BLE001
+        return fetch_child_blocks_stub(base_url=base_url, token=token, hub_id=feeder_id), [
+            {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed, stub fallback used: {exc}"}
+        ]
 
 def build_floors_from_hierarchy(
     hierarchy: dict[str, Any],
@@ -129,6 +188,7 @@ def build_export_context(
     profile: dict[str, Any] | None,
     base_url: str,
     token: str,
+    use_api: bool,
 ) -> tuple[dict[str, Any], int, int, int]:
     global_blocks = normalize_global_blocks(global_blocks_raw)
 
@@ -137,7 +197,7 @@ def build_export_context(
     if root_children and isinstance(root_children[0], dict):
         federation_id = str(root_children[0].get("id", ""))
 
-    child_block_map = fetch_child_blocks_stub(base_url=base_url, token=token, hub_id=federation_id)
+    child_block_map, errors = resolve_child_block_map(base_url=base_url, token=token, feeder_id=federation_id, use_api=use_api)
     floors, discovered = build_floors_from_hierarchy(hierarchy, child_block_map)
 
     profile_name = (profile or {}).get("profile_name", "")
@@ -151,9 +211,11 @@ def build_export_context(
         "hierarchy": hierarchy,
         "global_blocks": global_blocks,
         "floors": floors,
-        "errors": [],
+        "errors": errors,
     }
-    return context, discovered, 1, 0
+    api_success = 1 if use_api and not errors else 0 if use_api else 1
+    api_failed = len(errors)
+    return context, discovered, api_success, api_failed
 
 
 def main() -> None:
@@ -164,6 +226,7 @@ def main() -> None:
     parser.add_argument("--base-url", required=True, help="Reserved for future real API mode.")
     parser.add_argument("--token", required=False, help="Optional token override. If omitted, reads from .env (XFLOOR_TOKEN/TOKEN/BEARER_TOKEN).")
     parser.add_argument("--out", required=True, help="Output context JSON path.")
+    parser.add_argument("--use-api", action="store_true", help="Call real child-blocks API handler. Default uses stub.")
     args = parser.parse_args()
 
     hierarchy = load_json(args.hierarchy)
@@ -178,12 +241,14 @@ def main() -> None:
         profile=profile,
         base_url=args.base_url,
         token=token,
+        use_api=args.use_api,
     )
 
     Path(args.out).write_text(json.dumps(context, indent=2), encoding="utf-8")
 
     print(f"Floors discovered: {discovered}")
-    print(f"Childblocks API succeeded: {succeeded} (stub mode)")
+    mode = "api" if args.use_api else "stub"
+    print(f"Childblocks API succeeded: {succeeded} ({mode} mode)")
     print(f"Childblocks API failed: {failed}")
     print(f"Wrote context: {args.out}")
 
