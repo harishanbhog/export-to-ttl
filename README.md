@@ -92,6 +92,14 @@ Also, xFloor structural typing is:
 - non-root with children -> `xf:ChildFloor`
 - non-root leaf -> `xf:NodeFloor`
 
+
+Mandatory floor metadata in exporter:
+- `xf:phoneNumber`
+- `xf:emailId`
+- `xf:location`
+
+If missing in context/hierarchy, exporter writes `"unknown"` as fallback.
+
 ## V1 scope / non-goals
 
 - no import-back functionality

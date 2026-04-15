@@ -36,6 +36,7 @@ BASE_DATA_PROPERTIES = [
     XF.floorCategory,
     XF.phoneNumber,
     XF.emailId,
+    XF.location,
     XF.blockTypeCode,
     XF.inheritsToChildFloors,
     XF.isDefaultBlock,
@@ -59,6 +60,13 @@ def parse_flag_to_bool(value: Any) -> bool:
     if value is None:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "y"}
+
+
+def required_text(value: Any, fallback: str = "unknown") -> str:
+    if value is None:
+        return fallback
+    text = str(value).strip()
+    return text if text else fallback
 
 
 def add_optional_literal(graph: Graph, s: URIRef, p: URIRef, value: Any, datatype: URIRef | None = None) -> None:
@@ -142,7 +150,6 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
         is_leaf = len(children) == 0
         floor_api = floor_map.get(floor_id_text, {}) if isinstance(floor_map.get(floor_id_text), dict) else {}
 
-        graph.add((floor_uri, RDF.type, XF.Floor))
         if top_under_root:
             graph.add((floor_uri, RDF.type, XF.HubFloor))
             graph.add((floor_uri, RDF.type, XF.Federation))
@@ -164,8 +171,9 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
         add_optional_literal(graph, floor_uri, XF.visibility, visibility)
         add_optional_literal(graph, floor_uri, XF.runtimeFloorId, runtime_floor_id)
         add_optional_literal(graph, floor_uri, XF.floorCategory, floor_category)
-        add_optional_literal(graph, floor_uri, XF.phoneNumber, floor_api.get("phone") or node.get("phone"))
-        add_optional_literal(graph, floor_uri, XF.emailId, floor_api.get("email") or node.get("email"))
+        graph.add((floor_uri, XF.phoneNumber, Literal(required_text(floor_api.get("phone") or node.get("phone")))))
+        graph.add((floor_uri, XF.emailId, Literal(required_text(floor_api.get("email") or node.get("email")))))
+        graph.add((floor_uri, XF.location, Literal(required_text(floor_api.get("location") or node.get("location")))))
 
         profile_name = str(profile.get("profile_name", "")).strip().lower() if isinstance(profile, dict) else ""
         campus_level_map = {
@@ -230,7 +238,6 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
             graph.add((block_uri, RDF.type, mapped_block_uri))
 
         if root_hub_uri is not None:
-            graph.add((root_hub_uri, XF.hasBlock, block_uri))
             graph.add((root_hub_uri, XF.hasGlobalBlock, block_uri))
             if inherits:
                 graph.add((block_uri, XF.originFloor, root_hub_uri))
@@ -255,15 +262,15 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
             graph.add((block_uri, XF.blockId, Literal(bid_text)))
             add_optional_literal(graph, block_uri, XF.title, block.get("title"))
             add_optional_literal(graph, block_uri, XF.blockTypeCode, block.get("type"))
-            graph.add((floor_uri, XF.hasBlock, block_uri))
-
             title = block.get("title")
             mapped_curie = block_title_map.get(title) if isinstance(title, str) else None
             mapped_uri = resolve_curie(mapped_curie, prefix_map) if isinstance(mapped_curie, str) else None
             if mapped_uri is not None:
                 graph.add((block_uri, RDF.type, mapped_uri))
 
-            if bid_text not in global_block_ids:
+            if bid_text in global_block_ids:
+                graph.add((floor_uri, XF.hasGlobalBlock, block_uri))
+            else:
                 graph.add((floor_uri, XF.hasLocalBlock, block_uri))
                 if one_local_block_uri is None:
                     one_local_block_uri = block_uri
@@ -286,7 +293,7 @@ def main() -> None:
     print("\nExample snippet (one floor + one global block + one local block):")
     print("""@prefix xf: <https://xfloor.ai/ontology#> .
 
-xf:setspr a xf:Floor, xf:HubFloor, xf:Federation, campus:UniversityFloor .
+xf:setspr a xf:HubFloor, xf:Federation, campus:UniversityFloor .
 xf:setspr xf:hasGlobalBlock xf:block_1776142091308 .
 xf:setspr_sdc_kan xf:hasLocalBlock xf:block_kan_local_notice .""")
 
