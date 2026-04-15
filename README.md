@@ -41,6 +41,13 @@ The exporter core is domain-agnostic. It does **not** hardcode campus-specific s
 
 If no mapping is found, export still succeeds with generic xFloor typing (`xf:HubFloor` / `xf:ChildFloor` / `xf:NodeFloor`).
 
+Floor contact metadata fields are treated as mandatory in this version:
+- `xf:phoneNumber`
+- `xf:emailId`
+- `xf:location`
+
+If any of these are missing in input, exporter writes `"unknown"` as fallback so every floor has all three properties.
+
 ## Federation/hub behavior in V1
 
 In this MVP, the top meaningful node under `root` **doubles as the federation root hub**.
@@ -117,7 +124,7 @@ python export_ttl.py --hierarchy sample_hierarchy.json --blocks sample_blocks.js
 - floor/block individuals
 - hierarchy links (`xf:hasChildFloor`, `xf:hasParentFloor`)
 - federation root hub + global blocks
-- base metadata (`title`, `description`, `visibility`, `FID`, `floor_cat`, `phone`, `email`, block flags)
+- base metadata (`title`, `description`, `visibility`, `FID`, `floor_cat`, and mandatory `phone`, `email`, `location`, plus block flags)
 - optional domain class typing from profile mappings
 
 ## Non-goals (V1)

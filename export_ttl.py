@@ -47,6 +47,7 @@ BASE_DATA_PROPERTIES = [
     XF.floorCategory,
     XF.phoneNumber,
     XF.emailId,
+    XF.location,
     XF.blockTypeCode,
     XF.inheritsToChildFloors,
     XF.isDefaultBlock,
@@ -79,6 +80,16 @@ def parse_flag_to_bool(value: Any) -> bool:
         return False
     return str(value).strip().lower() in {"1", "true", "yes", "y"}
 
+
+
+
+def required_text(node: dict[str, Any], key: str, fallback: str = "unknown") -> str:
+    """Return mandatory text value for floor fields."""
+    value = node.get(key)
+    if value is None:
+        return fallback
+    text = str(value).strip()
+    return text if text else fallback
 
 def add_optional_literal(
     graph: Graph,
@@ -204,8 +215,9 @@ def export_graph(
         add_optional_literal(graph, floor_uri, XF.visibility, node.get("type"))
         add_optional_literal(graph, floor_uri, XF.runtimeFloorId, node.get("FID"))
         add_optional_literal(graph, floor_uri, XF.floorCategory, node.get("floor_cat"))
-        add_optional_literal(graph, floor_uri, XF.phoneNumber, node.get("phone"))
-        add_optional_literal(graph, floor_uri, XF.emailId, node.get("email"))
+        graph.add((floor_uri, XF.phoneNumber, Literal(required_text(node, "phone"))))
+        graph.add((floor_uri, XF.emailId, Literal(required_text(node, "email"))))
+        graph.add((floor_uri, XF.location, Literal(required_text(node, "location"))))
 
         floor_cat = node.get("floor_cat")
         mapped_curie: str | None = None
