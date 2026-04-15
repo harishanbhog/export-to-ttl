@@ -115,7 +115,7 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
             if not isinstance(item, dict):
                 continue
             floor_id = item.get("floor_id")
-            if not floor_id:
+            if not isinstance(floor_id, str) or not floor_id:
                 continue
             blocks_raw = item.get("blocks", [])
             blocks: list[dict[str, Any]] = []
@@ -124,7 +124,7 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
                     nb = normalize_block(b)
                     if nb.get("block_id"):
                         blocks.append(nb)
-            normalized[str(floor_id)] = blocks
+            normalized[floor_id] = blocks
         return normalized
 
     # Shape B: keyed dict {floor_id: {floor_blocks:[...]}}
@@ -177,10 +177,11 @@ def build_floors_from_api_map(
     """Build floors section using only floors returned by API/stub map.
 
     Per request, include only floors that actually appear in child-blocks response.
+    Keep floor_id exactly as returned by API (no remapping to hierarchy ids).
     """
     floors: dict[str, dict[str, Any]] = {}
     for floor_id, blocks in child_block_map.items():
-        if not isinstance(floor_id, str):
+        if not isinstance(floor_id, str) or not floor_id:
             continue
         if not blocks:
             continue
