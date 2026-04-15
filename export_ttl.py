@@ -100,7 +100,7 @@ def add_base_schema_declarations(graph: Graph) -> None:
         graph.add((prop, RDF.type, OWL.DatatypeProperty))
 
 
-def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, URIRef | None, URIRef | None]:
+def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, URIRef | None, URIRef | None, URIRef | None]:
     hierarchy = context.get("hierarchy", {}) if isinstance(context.get("hierarchy"), dict) else {}
     floor_map = context.get("floors", {}) if isinstance(context.get("floors"), dict) else {}
     global_blocks = context.get("global_blocks", []) if isinstance(context.get("global_blocks"), list) else []
@@ -135,6 +135,7 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
     block_count = 0
     root_hub_uri: URIRef | None = None
     one_local_block_uri: URIRef | None = None
+    one_global_block_uri: URIRef | None = None
 
     # first pass floors + hierarchy
     def walk(node: dict[str, Any], parent_uri: URIRef | None = None, top_under_root: bool = False, depth: int = 0) -> None:
@@ -239,6 +240,8 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
 
         if root_hub_uri is not None:
             graph.add((root_hub_uri, XF.hasGlobalBlock, block_uri))
+            if one_global_block_uri is None:
+                one_global_block_uri = block_uri
             if inherits:
                 graph.add((block_uri, XF.originFloor, root_hub_uri))
 
@@ -275,7 +278,7 @@ def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, 
                 if one_local_block_uri is None:
                     one_local_block_uri = block_uri
 
-    return graph, floor_count, block_count, root_hub_uri, one_local_block_uri
+    return graph, floor_count, block_count, root_hub_uri, one_local_block_uri, one_global_block_uri
 
 
 def main() -> None:
@@ -285,20 +288,24 @@ def main() -> None:
     args = parser.parse_args()
 
     context = json.loads(Path(args.context).read_text(encoding="utf-8"))
-    graph, floor_count, global_block_count, root_hub_uri, local_block_uri = serialize_context_to_ttl(context)
+    graph, floor_count, global_block_count, root_hub_uri, local_block_uri, global_block_uri = serialize_context_to_ttl(context)
     graph.serialize(destination=args.out, format="turtle")
 
     print(f"Exported Turtle: {args.out}")
     print(f"Summary: floors_exported={floor_count}, global_blocks_exported={global_block_count}")
     print("\nExample snippet (one floor + one global block + one local block):")
-    print("""@prefix xf: <https://xfloor.ai/ontology#> .
-
-xf:setspr a xf:HubFloor, xf:Federation, campus:UniversityFloor .
-xf:setspr xf:hasGlobalBlock xf:block_1776142091308 .
-xf:setspr_sdc_kan xf:hasLocalBlock xf:block_kan_local_notice .""")
+    print("@prefix xf: <https://xfloor.ai/ontology#> .")
+    if root_hub_uri is not None:
+        print(f"<{root_hub_uri}> a xf:HubFloor, xf:Federation .")
+    if root_hub_uri is not None and global_block_uri is not None:
+        print(f"<{root_hub_uri}> xf:hasGlobalBlock <{global_block_uri}> .")
+    if local_block_uri is not None:
+        print(f"# local example\n_:someFloor xf:hasLocalBlock <{local_block_uri}> .")
 
     if root_hub_uri is not None:
         print(f"Root hub: {root_hub_uri}")
+    if global_block_uri is not None:
+        print(f"Detected global block sample: {global_block_uri}")
     if local_block_uri is not None:
         print(f"Detected local block sample: {local_block_uri}")
 

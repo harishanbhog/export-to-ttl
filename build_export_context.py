@@ -94,6 +94,7 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
     response = requests.get(endpoint, headers=headers, timeout=timeout)
     response.raise_for_status()
     payload = response.json()
+    print("[childblocks-api] raw response:", json.dumps(payload)[:2000])
 
     if isinstance(payload, dict) and "data" in payload:
         payload = payload.get("data")
@@ -172,6 +173,7 @@ def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, li
 def build_floors_from_hierarchy(
     hierarchy: dict[str, Any],
     child_block_map: dict[str, list[dict[str, Any]]],
+    source_label: str,
 ) -> tuple[dict[str, dict[str, Any]], int]:
     floors: dict[str, dict[str, Any]] = {}
     discovered = 0
@@ -192,7 +194,7 @@ def build_floors_from_hierarchy(
                 "avatar": None,
                 "app_id": None,
                 "floor_blocks": child_block_map.get(floor_id_text, []),
-                "source": "floor_childblocks_stub",
+                "source": source_label,
             }
 
         for child in node.get("children", []) or []:
@@ -264,7 +266,8 @@ def build_export_context(
         federation_id = str(root_children[0].get("id", ""))
 
     child_block_map, errors = resolve_child_block_map(feeder_id=federation_id, use_api=use_api)
-    floors, discovered = build_floors_from_hierarchy(hierarchy, child_block_map)
+    source_label = "floor_childblocks_api" if use_api and not errors else "floor_childblocks_stub"
+    floors, discovered = build_floors_from_hierarchy(hierarchy, child_block_map, source_label=source_label)
 
     profile_name = (profile or {}).get("profile_name", "")
     context = {
@@ -279,6 +282,7 @@ def build_export_context(
         "floors": floors,
         "errors": errors,
     }
+    print(f"[childblocks] mapped floors from provider: {len(child_block_map)}")
     api_success = 1 if use_api and not errors else 0 if use_api else 1
     api_failed = len(errors)
     return context, discovered, api_success, api_failed
