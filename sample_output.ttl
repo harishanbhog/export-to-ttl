@@ -30,20 +30,30 @@ campus:QuizBlock a owl:Class .
 campus:PollBlock a owl:Class .
 campus:FeedBlock a owl:Class .
 
-xf:setspr a campus:InstitutionFloor, xf:Federation, xf:Floor, xf:HubFloor ;
-    xf:floorId "setspr" ;
-    xf:title "SETSPR" ;
-    xf:description "Main federation" ;
+xf:setspr_uni a campus:UniversityFloor, xf:HubFloor ;
+    xf:floorId "setspr_uni" ;
+    xf:title "SETSPR University" ;
+    xf:description "University federation root" ;
     xf:visibility "private" ;
     xf:isLeaf false ;
-    xf:floorCategory "Institution Floor" ;
+    xf:floorCategory "University Floor" ;
     xf:phoneNumber "9999999999" ;
-    xf:emailId "info@example.org" ;
-    xf:hasChildFloor xf:setspr_sdc_kan ;
+    xf:emailId "university@example.org" ;
+    xf:hasChildFloor xf:setspr_inst ;
     xf:hasGlobalBlock xf:block_1776142090894,
         xf:block_1776142091308 .
 
-xf:setspr_sdc_kan a campus:DepartmentFloor, xf:ChildFloor, xf:Floor ;
+xf:setspr_inst a campus:InstitutionFloor, xf:ChildFloor ;
+    xf:floorId "setspr_inst" ;
+    xf:title "SETSPR Institution" ;
+    xf:description "Institution node" ;
+    xf:visibility "private" ;
+    xf:isLeaf false ;
+    xf:floorCategory "Institution Floor" ;
+    xf:hasParentFloor xf:setspr_uni ;
+    xf:hasChildFloor xf:setspr_sdc_kan .
+
+xf:setspr_sdc_kan a campus:DepartmentFloor, xf:ChildFloor ;
     xf:floorId "setspr_sdc_kan" ;
     xf:title "Department of Kannada" ;
     xf:description "Department of Kannada" ;
@@ -51,10 +61,10 @@ xf:setspr_sdc_kan a campus:DepartmentFloor, xf:ChildFloor, xf:Floor ;
     xf:isLeaf false ;
     xf:runtimeFloorId "1776142728171" ;
     xf:floorCategory "Department Floor" ;
-    xf:hasParentFloor xf:setspr ;
+    xf:hasParentFloor xf:setspr_inst ;
     xf:hasChildFloor xf:setspr_sdc_kan_venkaborao .
 
-xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:Floor, xf:NodeFloor ;
+xf:setspr_sdc_kan_venkaborao a campus:FacultyFloor, xf:NodeFloor ;
     xf:floorId "setspr_sdc_kan_venkaborao" ;
     xf:title "Dr Venkabo Rao M" ;
     xf:description "Department of Kannada" ;
@@ -75,7 +85,7 @@ xf:block_1776142091308 a campus:FeedBlock, xf:Block ;
     xf:isLiveEnabled false ;
     xf:analyticsEnabled false ;
     xf:userAllowedToPost false ;
-    xf:originFloor xf:setspr .
+    xf:originFloor xf:setspr_uni .
 
 xf:block_1776142090894 a campus:NewsBlock, xf:Block ;
     xf:blockId "1776142090894" ;

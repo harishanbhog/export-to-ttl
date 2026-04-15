@@ -2,35 +2,45 @@
   "name": "root",
   "children": [
     {
-      "name": "setspr",
-      "id": "setspr",
+      "name": "setspr_university",
+      "id": "setspr_uni",
       "type": "private",
-      "title": "SETSPR",
-      "desc": "Main federation",
-      "floor_cat": "Institution Floor",
+      "title": "SETSPR University",
+      "desc": "University federation root",
+      "floor_cat": "University Floor",
       "phone": "9999999999",
-      "email": "info@example.org",
+      "email": "university@example.org",
       "children": [
         {
-          "name": "kan",
-          "id": "setspr_sdc_kan",
+          "name": "setspr_institution",
+          "id": "setspr_inst",
           "type": "private",
-          "title": "Department of Kannada",
-          "desc": "Department of Kannada",
-          "floor_cat": "Department Floor",
+          "title": "SETSPR Institution",
+          "desc": "Institution node",
+          "floor_cat": "Institution Floor",
           "children": [
             {
-              "name": "venkaborao",
-              "id": "setspr_sdc_kan_venkaborao",
+              "name": "kan",
+              "id": "setspr_sdc_kan",
               "type": "private",
-              "title": "Dr Venkabo Rao M",
+              "title": "Department of Kannada",
               "desc": "Department of Kannada",
-              "floor_cat": "Lecturer Floor",
-              "children": [],
-              "FID": "1776143034000"
+              "floor_cat": "Department Floor",
+              "children": [
+                {
+                  "name": "venkaborao",
+                  "id": "setspr_sdc_kan_venkaborao",
+                  "type": "private",
+                  "title": "Dr Venkabo Rao M",
+                  "desc": "Department of Kannada",
+                  "floor_cat": "Lecturer Floor",
+                  "children": [],
+                  "FID": "1776143034000"
+                }
+              ],
+              "FID": "1776142728171"
             }
-          ],
-          "FID": "1776142728171"
+          ]
         }
       ]
     }

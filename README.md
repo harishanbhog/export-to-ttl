@@ -38,14 +38,12 @@ The exporter core is domain-agnostic. It does **not** hardcode campus-specific s
 - always exported as a literal (`xf:floorCategory`) when present
 - optionally mapped to a domain class using `profile.floor_category_map`
 
-If no mapping is found, export still succeeds with generic xFloor typing.
+If no mapping is found, export still succeeds with generic xFloor typing (`xf:HubFloor` / `xf:ChildFloor` / `xf:NodeFloor`).
 
 ## Federation/hub behavior in V1
 
 In this MVP, the top meaningful node under `root` **doubles as the federation root hub**.
 It is typed as:
-- `xf:Federation`
-- `xf:Floor`
 - `xf:HubFloor`
 
 All non-root floors are typed as:

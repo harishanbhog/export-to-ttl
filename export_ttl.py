@@ -177,10 +177,8 @@ def export_graph(
         children = node.get("children") or []
         is_leaf = len(children) == 0
 
-        graph.add((floor_uri, RDF.type, XF.Floor))
         if top_under_root:
             graph.add((floor_uri, RDF.type, XF.HubFloor))
-            graph.add((floor_uri, RDF.type, XF.Federation))
             root_hub_uri = floor_uri
         else:
             graph.add((floor_uri, RDF.type, XF.NodeFloor if is_leaf else XF.ChildFloor))
@@ -293,10 +291,10 @@ def main() -> None:
     print("\nExample snippet (one floor + one block):")
     print("""@prefix xf: <https://xfloor.ai/ontology#> .
 
-xf:setspr a xf:Floor, xf:HubFloor, xf:Federation ;
-    xf:floorId \"setspr\" ;
-    xf:floorCategory \"Institution Floor\" ;
-    xf:title \"SETSPR\" .
+xf:setspr_uni a xf:HubFloor ;
+    xf:floorId \"setspr_uni\" ;
+    xf:floorCategory \"University Floor\" ;
+    xf:title \"SETSPR University\" .
 
 xf:block_1776142091308 a xf:Block ;
     xf:blockId \"1776142091308\" ;
