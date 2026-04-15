@@ -31,5 +31,11 @@
     "campus:QuizBlock",
     "campus:PollBlock",
     "campus:FeedBlock"
+  ],
+  "hierarchy_levels": [
+    "campus:UniversityFloor",
+    "campus:InstitutionFloor",
+    "campus:DepartmentFloor",
+    "campus:FacultyFloor"
   ]
 }

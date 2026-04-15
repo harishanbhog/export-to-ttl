@@ -37,6 +37,7 @@ The exporter core is domain-agnostic. It does **not** hardcode campus-specific s
 `floor_cat` is treated as a runtime semantic hint:
 - always exported as a literal (`xf:floorCategory`) when present
 - optionally mapped to a domain class using `profile.floor_category_map`
+- if `floor_cat` is missing or unmatched, exporter can fallback to `profile.hierarchy_levels` by depth (level 0 = root hub, level 1 = child, etc.)
 
 If no mapping is found, export still succeeds with generic xFloor typing (`xf:HubFloor` / `xf:ChildFloor` / `xf:NodeFloor`).
 

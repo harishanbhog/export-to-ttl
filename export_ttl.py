@@ -65,6 +65,12 @@ def sanitize_fragment(value: str, fallback_prefix: str) -> str:
     return cleaned or f"{fallback_prefix}_unknown"
 
 
+
+
+def normalize_text(value: str) -> str:
+    """Normalize text for case-insensitive matching."""
+    return re.sub(r"\s+", " ", (value or "").strip().lower())
+
 def parse_flag_to_bool(value: Any) -> bool:
     """Normalize common runtime booleans such as 1/0, true/false."""
     if isinstance(value, bool):
@@ -160,13 +166,19 @@ def export_graph(
                 graph.add((class_uri, RDF.type, OWL.Class))
 
     floor_category_map: dict[str, str] = profile.get("floor_category_map", {}) if profile else {}
+    floor_category_map_normalized: dict[str, str] = {
+        normalize_text(str(k)): str(v)
+        for k, v in floor_category_map.items()
+        if isinstance(k, str) and isinstance(v, str)
+    }
+    hierarchy_levels: list[str] = [x for x in (profile.get("hierarchy_levels", []) if profile else []) if isinstance(x, str)]
     block_title_map: dict[str, str] = profile.get("block_title_map", {}) if profile else {}
 
     floor_count = 0
     block_count = 0
     root_hub_uri: URIRef | None = None
 
-    def walk_floor(node: dict[str, Any], parent_uri: URIRef | None = None, top_under_root: bool = False) -> URIRef | None:
+    def walk_floor(node: dict[str, Any], parent_uri: URIRef | None = None, top_under_root: bool = False, depth: int = 0) -> URIRef | None:
         nonlocal floor_count, root_hub_uri
 
         floor_id = node.get("id")
@@ -196,11 +208,19 @@ def export_graph(
         add_optional_literal(graph, floor_uri, XF.emailId, node.get("email"))
 
         floor_cat = node.get("floor_cat")
+        mapped_curie: str | None = None
         if isinstance(floor_cat, str):
             mapped_curie = floor_category_map.get(floor_cat)
-            mapped_uri = resolve_curie(mapped_curie, prefix_map) if isinstance(mapped_curie, str) else None
-            if mapped_uri is not None:
-                graph.add((floor_uri, RDF.type, mapped_uri))
+            if mapped_curie is None:
+                mapped_curie = floor_category_map_normalized.get(normalize_text(floor_cat))
+
+        # Optional depth-based fallback: map each hierarchy level from profile.
+        if mapped_curie is None and depth < len(hierarchy_levels):
+            mapped_curie = hierarchy_levels[depth]
+
+        mapped_uri = resolve_curie(mapped_curie, prefix_map) if isinstance(mapped_curie, str) else None
+        if mapped_uri is not None:
+            graph.add((floor_uri, RDF.type, mapped_uri))
 
         if parent_uri is not None:
             graph.add((parent_uri, XF.hasChildFloor, floor_uri))
@@ -210,13 +230,13 @@ def export_graph(
 
         for child in children:
             if isinstance(child, dict):
-                walk_floor(child, parent_uri=floor_uri)
+                walk_floor(child, parent_uri=floor_uri, depth=depth + 1)
 
         return floor_uri
 
     for child in hierarchy.get("children", []):
         if isinstance(child, dict):
-            walk_floor(child, top_under_root=True)
+            walk_floor(child, top_under_root=True, depth=0)
 
     seen_block_ids: set[str] = set()
 
