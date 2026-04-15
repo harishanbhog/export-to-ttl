@@ -11,6 +11,8 @@ from pathlib import Path
 from typing import Any
 
 
+DEFAULT_BASE_URL = "https://floortv.in/api/memory/"
+
 
 def load_json(path: str) -> dict[str, Any]:
     return json.loads(Path(path).read_text(encoding="utf-8"))
@@ -62,7 +64,7 @@ def fetch_child_blocks_stub(base_url: str, token: str, hub_id: str) -> dict[str,
 
 
 
-def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: int = 15) -> dict[str, list[dict[str, Any]]]:
+def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[dict[str, Any]]]:
     """Real API handler for child blocks.
 
     API: <baseURL>/floor/child/blocks/{feeder_id}
@@ -78,8 +80,17 @@ def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: i
     except ModuleNotFoundError as exc:
         raise RuntimeError("requests is required only for --use-api mode") from exc
 
-    endpoint = f"{base_url.rstrip('/')}/floor/child/blocks/{feeder_id}"
-    headers = {"Authorization": f"Bearer {token}"}
+    api = resolve_api_settings()
+    base_url = api["base_url"].rstrip("/") + "/"
+    user_id = api["user_id"]
+    app_id = api["app_id"]
+    token = api["token"]
+
+    if not user_id or not app_id:
+        raise RuntimeError("USER_ID and APP_ID must be set in .env or environment")
+
+    endpoint = f"{base_url}floor/child/blocks/{floor_id}?user_id={user_id}&app_id={app_id}"
+    headers = {"Authorization": f"Bearer {token}"} if token else {}
     response = requests.get(endpoint, headers=headers, timeout=timeout)
     response.raise_for_status()
     payload = response.json()
@@ -146,15 +157,15 @@ def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: i
     return normalized
 
 
-def resolve_child_block_map(base_url: str, token: str, feeder_id: str, use_api: bool) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, str]]]:
+def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, str]]]:
     """Use API when requested, otherwise stub; never raise."""
     if not use_api:
-        return fetch_child_blocks_stub(base_url=base_url, token=token, hub_id=feeder_id), []
+        return fetch_child_blocks_stub(base_url="", token="", hub_id=feeder_id), []
 
     try:
-        return fetch_child_blocks_api(base_url=base_url, token=token, feeder_id=feeder_id), []
+        return fetch_child_blocks_api(floor_id=feeder_id), []
     except Exception as exc:  # noqa: BLE001
-        return fetch_child_blocks_stub(base_url=base_url, token=token, hub_id=feeder_id), [
+        return fetch_child_blocks_stub(base_url="", token="", hub_id=feeder_id), [
             {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed, stub fallback used: {exc}"}
         ]
 
@@ -197,37 +208,52 @@ def build_floors_from_hierarchy(
 
 
 
-def load_dotenv_token(dotenv_path: str = ".env") -> str:
-    """Read token from .env file without external deps."""
+def load_dotenv_values(dotenv_path: str = ".env") -> dict[str, str]:
+    """Read simple KEY=VALUE pairs from .env without external deps."""
     path = Path(dotenv_path)
     if not path.exists():
-        return ""
+        return {}
+    values: dict[str, str] = {}
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if not stripped or stripped.startswith("#") or "=" not in stripped:
             continue
         key, value = stripped.split("=", 1)
-        key = key.strip()
-        value = value.strip().strip('"').strip("'")
-        if key in {"XFLOOR_TOKEN", "TOKEN", "BEARER_TOKEN"}:
-            return value
-    return ""
+        values[key.strip()] = value.strip().strip('"').strip("'")
+    return values
 
 
-def resolve_token(cli_token: str | None) -> str:
-    if cli_token and cli_token.strip():
-        return cli_token.strip()
-    env_token = os.getenv("XFLOOR_TOKEN") or os.getenv("TOKEN") or os.getenv("BEARER_TOKEN")
-    if env_token:
-        return env_token.strip()
-    return load_dotenv_token()
+def resolve_api_settings() -> dict[str, str]:
+    """Resolve API settings from env/.env.
+
+    Required from env/.env:
+    - USER_ID (or XFLOOR_USER_ID)
+    - APP_ID (or XFLOOR_APP_ID)
+
+    Optional:
+    - XFLOOR_TOKEN / TOKEN / BEARER_TOKEN
+    - BASE_URL (defaults to https://floortv.in/api/memory/)
+    """
+    dotenv = load_dotenv_values()
+
+    def pick(*keys: str, default: str = "") -> str:
+        for key in keys:
+            val = os.getenv(key) or dotenv.get(key)
+            if val:
+                return val.strip()
+        return default
+
+    return {
+        "base_url": pick("BASE_URL", default=DEFAULT_BASE_URL),
+        "token": pick("XFLOOR_TOKEN", "TOKEN", "BEARER_TOKEN"),
+        "user_id": pick("USER_ID", "XFLOOR_USER_ID"),
+        "app_id": pick("APP_ID", "XFLOOR_APP_ID"),
+    }
 
 def build_export_context(
     hierarchy: dict[str, Any],
     global_blocks_raw: dict[str, Any],
     profile: dict[str, Any] | None,
-    base_url: str,
-    token: str,
     use_api: bool,
 ) -> tuple[dict[str, Any], int, int, int]:
     global_blocks = normalize_global_blocks(global_blocks_raw)
@@ -237,7 +263,7 @@ def build_export_context(
     if root_children and isinstance(root_children[0], dict):
         federation_id = str(root_children[0].get("id", ""))
 
-    child_block_map, errors = resolve_child_block_map(base_url=base_url, token=token, feeder_id=federation_id, use_api=use_api)
+    child_block_map, errors = resolve_child_block_map(feeder_id=federation_id, use_api=use_api)
     floors, discovered = build_floors_from_hierarchy(hierarchy, child_block_map)
 
     profile_name = (profile or {}).get("profile_name", "")
@@ -263,8 +289,6 @@ def main() -> None:
     parser.add_argument("--hierarchy", required=True, help="Path to hierarchy JSON.")
     parser.add_argument("--global-blocks", required=True, help="Path to global blocks JSON.")
     parser.add_argument("--profile", required=False, help="Optional profile JSON path.")
-    parser.add_argument("--base-url", required=True, help="Reserved for future real API mode.")
-    parser.add_argument("--token", required=False, help="Optional token override. If omitted, reads from .env (XFLOOR_TOKEN/TOKEN/BEARER_TOKEN).")
     parser.add_argument("--out", required=True, help="Output context JSON path.")
     parser.add_argument("--use-api", action="store_true", help="Call real child-blocks API handler. Default uses stub.")
     args = parser.parse_args()
@@ -273,14 +297,10 @@ def main() -> None:
     global_blocks_raw = load_json(args.global_blocks)
     profile = load_profile(args.profile)
 
-    token = resolve_token(args.token)
-
     context, discovered, succeeded, failed = build_export_context(
         hierarchy=hierarchy,
         global_blocks_raw=global_blocks_raw,
         profile=profile,
-        base_url=args.base_url,
-        token=token,
         use_api=args.use_api,
     )
 

@@ -1,37 +1,13 @@
 # xFloor Ontology Export MVP (Context-First Architecture)
 
 This MVP uses a **two-step flow**:
-
-1. Build a composed export context JSON (`ontology_export_context.json` style).
-2. Export Turtle (`.ttl`) from that composed context.
-
-## Why `ontology_export_context.json` exists
-
-The context file merges runtime sources into one export-ready object:
-- hierarchy (`hierarchy.json`)
-- global hub blocks (`global_blocks.json`)
-- per-floor visible blocks from child-blocks API
-- optional profile mapping (domain typing)
-- API/fetch errors (without aborting the run)
-
-Once this context exists, the Turtle exporter reads only that file.
-
-## Files
-
-- `build_export_context.py` – preprocessing/composition step
-- `export_ttl.py` – Turtle exporter from composed context
-- `requirements.txt`
-- `sample_hierarchy.json`
-- `sample_global_blocks.json`
-- `sample_profile.json`
-- `sample_export_context.json`
-- `sample_output.ttl`
+1. Build composed export context JSON.
+2. Export Turtle from that context.
 
 ## Requirements
-
 - Python 3.11+
 - `rdflib`
-- `requests` (needed only when running `build_export_context.py --use-api`)
+- `requests` (needed only for `--use-api` mode)
 
 ## Step 1: Build export context
 
@@ -40,37 +16,48 @@ python build_export_context.py \
   --hierarchy sample_hierarchy.json \
   --global-blocks sample_global_blocks.json \
   --profile sample_profile.json \
-  --base-url https://appfloor.in \
   --out sample_export_context.json
-  # add --use-api to call real API handler
 ```
 
-What it does:
-- traverses hierarchy and collects all `floor_id`s
-- uses a local stub by default for child blocks
-- optional real API handler: `GET <baseURL>/floor/child/blocks/{feeder_id}` via `--use-api`
-- maps stubbed child floor IDs to each floor's `floor_blocks`
-- normalizes global blocks
-- writes one composed JSON context
-- logs success/failure and stores issues in `errors[]`
-
-> Default implementation is **stub mode**.
-> Stubbed child floors with dummy blocks: `setspr_sdc_kan`, `setspr_sdc_kan_venkaborao`.
-
-Real API mode (with fallback to stub on failure):
+Optional real API mode:
 ```bash
-python build_export_context.py --hierarchy sample_hierarchy.json --global-blocks sample_global_blocks.json --profile sample_profile.json --base-url https://appfloor.in --out sample_export_context.json --use-api
+python build_export_context.py \
+  --hierarchy sample_hierarchy.json \
+  --global-blocks sample_global_blocks.json \
+  --profile sample_profile.json \
+  --out sample_export_context.json \
+  --use-api
 ```
 
-API handler parses response format `{ "list": [{"floor_id": ..., "blocks": [...]}, ...] }` and keeps all block properties in context floor blocks.
+### Child blocks API handler
 
-Token loading order for `build_export_context.py`:
-1. `--token` CLI argument (optional override)
-2. environment variables: `XFLOOR_TOKEN`, `TOKEN`, `BEARER_TOKEN`
-3. `.env` file keys: `XFLOOR_TOKEN`, `TOKEN`, `BEARER_TOKEN`
+When `--use-api` is enabled, builder calls:
+
+`https://floortv.in/api/memory/floor/child/blocks/{floor_id}?user_id=<USER_ID>&app_id=<APP_ID>`
+
+- `floor_id` comes from hierarchy federation/root node.
+- `user_id` and `app_id` are loaded from `.env` / environment.
+- if API fails, builder falls back to local stub and logs an error entry.
+
+Supported API response format includes:
+- `{ "list": [{"floor_id": "...", "blocks": [...]}, ...] }`
+
+All block properties from API are retained in context `floor_blocks`.
+
+### Environment /.env values
+
+Required for `--use-api`:
+- `USER_ID` (or `XFLOOR_USER_ID`)
+- `APP_ID` (or `XFLOOR_APP_ID`)
+
+Optional:
+- `XFLOOR_TOKEN` (or `TOKEN` / `BEARER_TOKEN`)
+- `BASE_URL` (defaults to `https://floortv.in/api/memory/`)
 
 Example `.env`:
-```
+```env
+USER_ID=1754011711033
+APP_ID=1754011711033
 XFLOOR_TOKEN=YOUR_TOKEN
 ```
 
@@ -80,39 +67,6 @@ XFLOOR_TOKEN=YOUR_TOKEN
 python export_ttl.py --context sample_export_context.json --out sample_output.ttl
 ```
 
-What it does:
-- loads only composed context JSON
-- emits base xFloor ontology vocabulary (classes/properties)
-- uses hierarchy for floor structure and parent-child relations
-- uses context floor map for floor-level metadata and floor-visible blocks
-- exports global blocks on root hub (`hasBlock`, `hasGlobalBlock`)
-- exports per-floor visible blocks (`hasBlock`) and approximates local blocks (`hasLocalBlock` if block ID not in global set)
-- applies optional profile-based floor and block typing via mappings
-
-
-Campus profile typing rule in exporter (level-based):
-- level 0 -> `campus:UniversityFloor`
-- level 1 -> `campus:InstitutionFloor`
-- level 2 -> `campus:DepartmentFloor`
-- level 3+ -> `campus:FacultyFloor`
-
-Also, xFloor structural typing is:
-- federation/root floor -> `xf:HubFloor`
-- non-root with children -> `xf:ChildFloor`
-- non-root leaf -> `xf:NodeFloor`
-
-
-Mandatory floor metadata in exporter:
-- `xf:phoneNumber`
-- `xf:emailId`
-- `xf:location`
-
-If missing in context/hierarchy, exporter writes `"unknown"` as fallback.
-
-## V1 scope / non-goals
-
-- no import-back functionality
-- no full ACL ontology
-- no full validation ontology
-- no perfect inheritance reconstruction
-- local-vs-inherited is an approximation based on global block ID membership
+## Notes
+- Stub mode remains default for offline runs.
+- This is MVP behavior; inheritance/local semantics are still approximated.
