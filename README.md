@@ -62,6 +62,8 @@ Real API mode (with fallback to stub on failure):
 python build_export_context.py --hierarchy sample_hierarchy.json --global-blocks sample_global_blocks.json --profile sample_profile.json --base-url https://appfloor.in --out sample_export_context.json --use-api
 ```
 
+API handler parses response format `{ "list": [{"floor_id": ..., "blocks": [...]}, ...] }` and keeps all block properties in context floor blocks.
+
 Token loading order for `build_export_context.py`:
 1. `--token` CLI argument (optional override)
 2. environment variables: `XFLOOR_TOKEN`, `TOKEN`, `BEARER_TOKEN`

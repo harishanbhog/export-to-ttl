@@ -66,6 +66,12 @@ def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: i
     """Real API handler for child blocks.
 
     API: <baseURL>/floor/child/blocks/{feeder_id}
+
+    Supported response shapes:
+    - {"list": [{"floor_id": "...", "blocks": [...]}, ...]}
+    - {"data": {"list": [...]}}
+    - {"floor_id": {"floor_blocks": [...]}, ...}
+    - [{"floor_id": {"floor_blocks": [...]}}, ...]
     """
     try:
         import requests  # lazy import; only needed in --use-api mode
@@ -78,34 +84,64 @@ def fetch_child_blocks_api(base_url: str, token: str, feeder_id: str, timeout: i
     response.raise_for_status()
     payload = response.json()
 
-    # Response shape expected same as stub: {floor_id: {floor_blocks:[...]}} or list of such maps
-    normalized: dict[str, list[dict[str, Any]]] = {}
-
     if isinstance(payload, dict) and "data" in payload:
         payload = payload.get("data")
 
-    def norm_blocks(items: Any) -> list[dict[str, Any]]:
-        out: list[dict[str, Any]] = []
-        for b in items or []:
-            if not isinstance(b, dict):
-                continue
-            bid = b.get("block_id") or b.get("BID")
-            if not bid:
-                continue
-            out.append({"block_id": str(bid), "title": b.get("title", ""), "type": str(b.get("type", ""))})
+    normalized: dict[str, list[dict[str, Any]]] = {}
+
+    def normalize_block(block: dict[str, Any]) -> dict[str, Any]:
+        """Retain all block properties; ensure normalized block_id exists."""
+        out = dict(block)
+        bid = out.get("block_id") or out.get("BID")
+        if bid is not None:
+            out["block_id"] = str(bid)
         return out
 
+    # Shape A: {"list": [{"floor_id":"...", "blocks":[...]}, ...]}
+    if isinstance(payload, dict) and isinstance(payload.get("list"), list):
+        for item in payload["list"]:
+            if not isinstance(item, dict):
+                continue
+            floor_id = item.get("floor_id")
+            if not floor_id:
+                continue
+            blocks_raw = item.get("blocks", [])
+            blocks: list[dict[str, Any]] = []
+            for b in blocks_raw or []:
+                if isinstance(b, dict):
+                    nb = normalize_block(b)
+                    if nb.get("block_id"):
+                        blocks.append(nb)
+            normalized[str(floor_id)] = blocks
+        return normalized
+
+    # Shape B: keyed dict {floor_id: {floor_blocks:[...]}}
     if isinstance(payload, dict):
         for fid, obj in payload.items():
             if isinstance(fid, str) and isinstance(obj, dict):
-                normalized[fid] = norm_blocks(obj.get("floor_blocks", []))
-    elif isinstance(payload, list):
+                blocks: list[dict[str, Any]] = []
+                for b in obj.get("floor_blocks", []) or []:
+                    if isinstance(b, dict):
+                        nb = normalize_block(b)
+                        if nb.get("block_id"):
+                            blocks.append(nb)
+                normalized[fid] = blocks
+        return normalized
+
+    # Shape C: list of keyed maps
+    if isinstance(payload, list):
         for entry in payload:
             if not isinstance(entry, dict):
                 continue
             for fid, obj in entry.items():
                 if isinstance(fid, str) and isinstance(obj, dict):
-                    normalized[fid] = norm_blocks(obj.get("floor_blocks", []))
+                    blocks: list[dict[str, Any]] = []
+                    for b in obj.get("floor_blocks", []) or []:
+                        if isinstance(b, dict):
+                            nb = normalize_block(b)
+                            if nb.get("block_id"):
+                                blocks.append(nb)
+                    normalized[fid] = blocks
 
     return normalized
 
