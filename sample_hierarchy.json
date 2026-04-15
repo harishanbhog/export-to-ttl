@@ -5,8 +5,11 @@
       "name": "setspr",
       "id": "setspr",
       "type": "private",
-      "title": "",
-      "desc": "",
+      "title": "SETSPR",
+      "desc": "Main federation",
+      "floor_cat": "Institution Floor",
+      "phone": "9999999999",
+      "email": "info@example.org",
       "children": [
         {
           "name": "kan",
@@ -14,6 +17,7 @@
           "type": "private",
           "title": "Department of Kannada",
           "desc": "Department of Kannada",
+          "floor_cat": "Department Floor",
           "children": [
             {
               "name": "venkaborao",
@@ -21,6 +25,7 @@
               "type": "private",
               "title": "Dr Venkabo Rao M",
               "desc": "Department of Kannada",
+              "floor_cat": "Lecturer Floor",
               "children": [],
               "FID": "1776143034000"
             }

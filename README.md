@@ -1,20 +1,82 @@
-# xFloor JSON → Turtle MVP Exporter
+# xFloor JSON → Turtle Exporter (MVP, Domain-Agnostic + Profile-Driven)
 
-This repository contains a **simple MVP prototype** that converts xFloor runtime federation JSON into a Protégé/WebProtégé-friendly Turtle (`.ttl`) export.
+This project exports xFloor runtime JSON into a Protégé/WebProtégé-compatible Turtle (`.ttl`) file.
 
-It intentionally keeps the model small and readable:
-- exports floor hierarchy and blocks
-- emits RDF/OWL style class/property declarations
-- creates floor/block individuals with basic mappings
-- includes optional campus typing heuristics
+## What this exporter does
+
+This V1 exporter reads:
+- `hierarchy.json` (floor hierarchy)
+- `blocks.json` (runtime block definitions)
+- optional `profile.json` (domain typing rules)
+
+and writes:
+- `xfloor_export.ttl` (or any file path passed via `--out`)
+
+## Base xFloor ontology vocabulary (always exported)
+
+The exporter always declares and uses the base xFloor ontology namespace:
+- `xf: https://xfloor.ai/ontology#`
+
+It also always binds:
+- `rdf:`
+- `rdfs:`
+- `owl:`
+- `xsd:`
+
+It always declares base classes/properties (e.g. `xf:Floor`, `xf:Block`, `xf:hasChildFloor`, `xf:hasGlobalBlock`, `xf:floorCategory`, etc.), even when no domain profile is provided.
+
+## Base ontology vs profile ontology
+
+- **Base xFloor ontology**: generic graph structure and metadata used for all exports.
+- **Optional domain profile**: domain-specific class typing rules loaded from JSON at runtime.
+
+The exporter core is domain-agnostic. It does **not** hardcode campus-specific semantics.
+
+## `floor_cat` behavior
+
+`floor_cat` is treated as a runtime semantic hint:
+- always exported as a literal (`xf:floorCategory`) when present
+- optionally mapped to a domain class using `profile.floor_category_map`
+
+If no mapping is found, export still succeeds with generic xFloor typing.
+
+## Federation/hub behavior in V1
+
+In this MVP, the top meaningful node under `root` **doubles as the federation root hub**.
+It is typed as:
+- `xf:Federation`
+- `xf:Floor`
+- `xf:HubFloor`
+
+No separate federation wrapper individual is created in V1.
+
+## Global block behavior in V1
+
+All blocks from `blocks.json` are treated as global blocks attached to the federation root hub using:
+- `xf:hasBlock`
+- `xf:hasGlobalBlock`
+
+If `display_child_floors == "1"`, exporter sets:
+- `xf:inheritsToChildFloors true`
+- `xf:isDerivedBlock true`
+- `xf:isEditableByLocalOwner false`
+- `xf:originFloor <root_hub>`
+
+If `display_child_floors == "0"`, exporter sets:
+- `xf:inheritsToChildFloors false`
+- `xf:isDerivedBlock false`
+- `xf:isEditableByLocalOwner true`
+
+`xf:hasLocalBlock` is declared in vocabulary, but local child block export is not implemented in V1.
 
 ## Files
 
-- `export_ttl.py` – exporter script
-- `requirements.txt` – Python dependency list
-- `sample_hierarchy.json` – sample hierarchy input
-- `sample_blocks.json` – sample blocks input
-- `sample_output.ttl` – example generated Turtle output
+- `export_ttl.py`
+- `requirements.txt`
+- `sample_hierarchy.json`
+- `sample_blocks.json`
+- `sample_profile.json`
+- `sample_output.ttl`
 
 ## Requirements
 
@@ -27,71 +89,37 @@ It intentionally keeps the model small and readable:
 python -m venv .venv
 # Linux/macOS
 source .venv/bin/activate
-# Windows (PowerShell)
+# Windows PowerShell
 # .venv\Scripts\Activate.ps1
 
 python -m pip install --upgrade pip
 pip install -r requirements.txt
 ```
 
-## If `pip install -r requirements.txt` fails with `No matching distribution found`
+## Run (with profile)
 
-If you also see connection errors such as `getaddrinfo failed`, that usually means **network/DNS/proxy access to PyPI is blocked**, not that `rdflib` is unavailable.
+```bash
+python export_ttl.py --hierarchy sample_hierarchy.json --blocks sample_blocks.json --profile sample_profile.json --out sample_output.ttl
+```
 
-Try the following in order:
-
-1. Verify Python version:
-   ```bash
-   python --version
-   ```
-   Must be 3.11+ for this MVP.
-
-2. Test DNS/network to PyPI:
-   ```bash
-   nslookup pypi.org
-   ```
-
-3. If your environment uses a corporate proxy, configure pip:
-   ```bash
-   pip install --proxy http://USERNAME:PASSWORD@PROXY_HOST:PORT -r requirements.txt
-   ```
-
-4. Use an internal mirror (if your org provides one):
-   ```bash
-   pip install --index-url https://<your-mirror>/simple -r requirements.txt
-   ```
-
-5. Offline install using wheel file:
-   - On a machine with internet:
-     ```bash
-     pip download rdflib -d wheels
-     ```
-   - Copy `wheels/` to your target machine, then:
-     ```bash
-     pip install --no-index --find-links wheels rdflib
-     ```
-
-## Run
+## Run (without profile)
 
 ```bash
 python export_ttl.py --hierarchy sample_hierarchy.json --blocks sample_blocks.json --out sample_output.ttl
 ```
 
-## Mapping summary (MVP)
+## What V1 exports
 
-- Floor node with `id` => RDF individual (`xf:Floor`)
-- Children present => `xf:HubFloor`; no children => `xf:LeafFloor`
-- Top meaningful children under `root` => also typed `xf:Federation`
-- Parent/child links: `xf:hasChildFloor` and `xf:hasParentFloor`
-- Blocks => `xf:Block`, attached to top federation via `xf:hasBlock`
-- Runtime flags (`"1"`/`"0"`) converted to RDF booleans
+- floor/block individuals
+- hierarchy links (`xf:hasChildFloor`, `xf:hasParentFloor`)
+- federation root hub + global blocks
+- base metadata (`title`, `description`, `visibility`, `FID`, `floor_cat`, `phone`, `email`, block flags)
+- optional domain class typing from profile mappings
 
-### Optional campus typing heuristic
+## Non-goals (V1)
 
-- title contains `Department` => `campus:DepartmentFloor`
-- leaf title starts with `Dr ` or appears person-like => `campus:FacultyFloor`
-
-## Notes
-
-- This is an MVP exporter from xFloor runtime JSON to Protégé-compatible Turtle.
-- Import-back, ACL modeling, and full validation ontology are intentionally out of scope for V1.
+- no import-back functionality
+- no full ACL ontology modeling
+- no full validation ontology
+- no local child block export
+- no advanced OWL reasoning
