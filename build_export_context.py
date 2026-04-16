@@ -70,10 +70,8 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
     API: <baseURL>/floor/child/blocks/{feeder_id}
 
     Supported response shapes:
-    - {"list": [{"floor_id": "...", "blocks": [...]}, ...]}
+    - {"list": [{"fed_path": "...", "blocks": [...]}, ...]}
     - {"data": {"list": [...]}}
-    - {"floor_id": {"floor_blocks": [...]}, ...}
-    - [{"floor_id": {"floor_blocks": [...]}}, ...]
     """
     try:
         import requests  # lazy import; only needed in --use-api mode
@@ -109,12 +107,12 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
             out["block_id"] = str(bid)
         return out
 
-    # Shape A: {"list": [{"floor_id":"...", "blocks":[...]}, ...]}
+    # Shape A: {"list": [{"fed_path":"...", "blocks":[...]}, ...]}
     if isinstance(payload, dict) and isinstance(payload.get("list"), list):
         for item in payload["list"]:
             if not isinstance(item, dict):
                 continue
-            floor_id = item.get("floor_id")
+            floor_id = item.get("fed_path")
             if not isinstance(floor_id, str) or not floor_id:
                 continue
             blocks_raw = item.get("blocks", [])
@@ -127,34 +125,7 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
             normalized[floor_id] = blocks
         return normalized
 
-    # Shape B: keyed dict {floor_id: {floor_blocks:[...]}}
-    if isinstance(payload, dict):
-        for fid, obj in payload.items():
-            if isinstance(fid, str) and isinstance(obj, dict):
-                blocks: list[dict[str, Any]] = []
-                for b in obj.get("floor_blocks", []) or []:
-                    if isinstance(b, dict):
-                        nb = normalize_block(b)
-                        if nb.get("block_id"):
-                            blocks.append(nb)
-                normalized[fid] = blocks
-        return normalized
-
-    # Shape C: list of keyed maps
-    if isinstance(payload, list):
-        for entry in payload:
-            if not isinstance(entry, dict):
-                continue
-            for fid, obj in entry.items():
-                if isinstance(fid, str) and isinstance(obj, dict):
-                    blocks: list[dict[str, Any]] = []
-                    for b in obj.get("floor_blocks", []) or []:
-                        if isinstance(b, dict):
-                            nb = normalize_block(b)
-                            if nb.get("block_id"):
-                                blocks.append(nb)
-                    normalized[fid] = blocks
-
+    # Shape B/C intentionally not handled for now per API contract.
     return normalized
 
 
@@ -189,16 +160,6 @@ def collect_hierarchy_ids(hierarchy: dict[str, Any]) -> set[str]:
     return ids
 
 
-def map_api_floor_id(api_floor_id: str, hierarchy_ids: set[str]) -> str:
-    """Prefer exact API floor_id; if numeric, map to unique hierarchy id suffix match."""
-    if api_floor_id in hierarchy_ids:
-        return api_floor_id
-    if api_floor_id.isdigit():
-        matches = [hid for hid in hierarchy_ids if hid.endswith("_" + api_floor_id)]
-        if len(matches) == 1:
-            return matches[0]
-    return api_floor_id
-
 def build_floors_from_api_map(
     child_block_map: dict[str, list[dict[str, Any]]],
     source_label: str,
@@ -207,18 +168,18 @@ def build_floors_from_api_map(
     """Build floors section using only floors returned by API/stub map.
 
     Per request, include only floors that actually appear in child-blocks response.
-    Prefer API floor_id exact matches; remap numeric ids to unique hierarchy suffix matches.
+    Ignore any floor ids that are not present in hierarchy (hierarchy is source of truth).
     """
     floors: dict[str, dict[str, Any]] = {}
     for floor_id, blocks in child_block_map.items():
         if not isinstance(floor_id, str) or not floor_id:
             continue
-        mapped_floor_id = map_api_floor_id(floor_id, hierarchy_ids)
-        if mapped_floor_id != floor_id:
-            print(f"[childblocks] remapped API floor_id {floor_id} -> {mapped_floor_id}")
+        if floor_id not in hierarchy_ids:
+            print(f"[childblocks] ignored non-hierarchy floor id from API: {floor_id}")
+            continue
         if not blocks:
             continue
-        floors[mapped_floor_id] = {
+        floors[floor_id] = {
             "floor_blocks": blocks,
             "source": source_label,
         }
