@@ -1,0 +1,24 @@
+{
+  "blocks": [
+    {
+      "BID": "1776142091308",
+      "title": "Feeds",
+      "type": "1",
+      "display_child_floors": "1",
+      "default_block": "1",
+      "is_live_enabled": "0",
+      "analytics_enabled": "0",
+      "user_allowed_to_post": "0"
+    },
+    {
+      "BID": "1776142090894",
+      "title": "CampusNews",
+      "type": "0",
+      "display_child_floors": "0",
+      "default_block": "0",
+      "is_live_enabled": "1",
+      "analytics_enabled": "0",
+      "user_allowed_to_post": "0"
+    }
+  ]
+}
