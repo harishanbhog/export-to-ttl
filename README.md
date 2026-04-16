@@ -126,6 +126,8 @@ The command writes TTL to the file passed in `--ttl-out` and logs:
 [sse-export] wrote ttl file: /tmp/generated_output.ttl
 ```
 
+If API context build fails (`api_failed: 1`), detailed API request/response diagnostics are logged to stdout, including endpoint parameters, HTTP status, raw payload snippet, normalized floor keys, and error reasons.
+
 This prints SSE-formatted output to stdout:
 
 ```text

@@ -128,13 +128,29 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
     user_id = api["user_id"]
     app_id = api["app_id"]
     token = api["token"]
+    token_present = bool(token)
 
     if not user_id or not app_id:
         raise RuntimeError("USER_ID and APP_ID must be set in .env or environment")
 
     endpoint = f"{base_url}floor/child/blocks/{floor_id}?user_id={user_id}&app_id={app_id}"
     headers = {"Authorization": f"Bearer {token}"} if token else {}
+    print(
+        "[childblocks-api] request params:",
+        json.dumps(
+            {
+                "floor_id": floor_id,
+                "base_url": base_url,
+                "endpoint": endpoint,
+                "user_id": user_id,
+                "app_id": app_id,
+                "token_present": token_present,
+                "timeout": timeout,
+            }
+        ),
+    )
     response = requests.get(endpoint, headers=headers, timeout=timeout)
+    print("[childblocks-api] http status:", response.status_code)
     response.raise_for_status()
     payload = response.json()
     print("[childblocks-api] raw response:", json.dumps(payload)[:2000])
@@ -154,6 +170,7 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
 
     # Shape A: {"list": [{"fed_path":"...", "blocks":[...]}, ...]}
     if isinstance(payload, dict) and isinstance(payload.get("list"), list):
+        print("[childblocks-api] response list count:", len(payload.get("list") or []))
         for item in payload["list"]:
             if not isinstance(item, dict):
                 continue
@@ -168,9 +185,11 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
                     if nb.get("block_id"):
                         blocks.append(nb)
             normalized[floor_id] = blocks
+        print("[childblocks-api] normalized floor keys:", list(normalized.keys()))
         return normalized
 
     # Shape B/C intentionally not handled for now per API contract.
+    print("[childblocks-api] unsupported response shape; normalized floor keys: []")
     return normalized
 
 
@@ -191,8 +210,11 @@ def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, li
         print("[childblocks] stub mode disabled; forcing API call")
 
     try:
-        return fetch_child_blocks_api(floor_id=feeder_id), []
+        child_map = fetch_child_blocks_api(floor_id=feeder_id)
+        print("[childblocks] api map floor count:", len(child_map))
+        return child_map, []
     except Exception as exc:  # noqa: BLE001
+        print("[childblocks] api failure reason:", repr(exc))
         return {}, [
             {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed; no stub fallback: {exc}"}
         ]
@@ -370,6 +392,8 @@ def build_export_context(
         "errors": errors,
     }
     print(f"[childblocks] mapped floors from provider: {len(child_block_map)}")
+    if errors:
+        print("[childblocks] errors:", json.dumps(errors))
     api_success = 1 if not errors else 0
     api_failed = len(errors)
     return context, discovered, api_success, api_failed

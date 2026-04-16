@@ -124,6 +124,7 @@ def stream_ttl_export(request: ExportRequest) -> Iterator[str]:
             "floors_discovered": floors_discovered,
             "api_success": api_success,
             "api_failed": api_failed,
+            "errors": context.get("errors", []),
         },
     )
 
