@@ -1,0 +1,133 @@
+{
+  "version": "v1",
+  "generated_at": "2026-04-15T14:22:45.939469+00:00",
+  "federation_id": "setspr",
+  "category": "campus",
+  "profile_name": "campus",
+  "profile": {
+    "profile_name": "campus",
+    "namespace_prefix": "campus",
+    "namespace_uri": "https://xfloor.ai/campus#",
+    "floor_category_map": {
+      "University Floor": "campus:UniversityFloor",
+      "Institution Floor": "campus:InstitutionFloor",
+      "Department Floor": "campus:DepartmentFloor",
+      "Lecturer Floor": "campus:FacultyFloor",
+      "Student Floor": "campus:StudentFloor"
+    },
+    "block_title_map": {
+      "CampusNews": "campus:NewsBlock",
+      "Quiz": "campus:QuizBlock",
+      "Poll": "campus:PollBlock",
+      "Feeds": "campus:FeedBlock"
+    },
+    "declare_classes": [
+      "campus:UniversityFloor",
+      "campus:InstitutionFloor",
+      "campus:DepartmentFloor",
+      "campus:FacultyFloor",
+      "campus:StudentFloor",
+      "campus:NewsBlock",
+      "campus:QuizBlock",
+      "campus:PollBlock",
+      "campus:FeedBlock"
+    ]
+  },
+  "hierarchy": {
+    "name": "root",
+    "children": [
+      {
+        "name": "setspr",
+        "id": "setspr",
+        "type": "private",
+        "title": "SETSPR",
+        "desc": "Main federation",
+        "floor_cat": "Institution Floor",
+        "phone": "9999999999",
+        "email": "info@example.org",
+        "children": [
+          {
+            "name": "kan",
+            "id": "setspr_sdc_kan",
+            "type": "private",
+            "title": "Department of Kannada",
+            "desc": "Department of Kannada",
+            "floor_cat": "Department Floor",
+            "phone": "8888888888",
+            "email": "kan@example.org",
+            "children": [
+              {
+                "name": "venkaborao",
+                "id": "setspr_sdc_kan_venkaborao",
+                "type": "private",
+                "title": "Dr Venkabo Rao M",
+                "desc": "Department of Kannada",
+                "floor_cat": "Lecturer Floor",
+                "phone": "7777777777",
+                "email": "venkabo.rao@example.org",
+                "children": [],
+                "FID": "1776143034000"
+              }
+            ],
+            "FID": "1776142728171"
+          }
+        ]
+      }
+    ]
+  },
+  "global_blocks": [
+    {
+      "block_id": "1776142091308",
+      "title": "Feeds",
+      "type": "1",
+      "display_child_floors": "1",
+      "default_block": "1",
+      "is_live_enabled": "0",
+      "analytics_enabled": "0",
+      "user_allowed_to_post": "0"
+    },
+    {
+      "block_id": "1776142090894",
+      "title": "CampusNews",
+      "type": "0",
+      "display_child_floors": "0",
+      "default_block": "0",
+      "is_live_enabled": "1",
+      "analytics_enabled": "0",
+      "user_allowed_to_post": "0"
+    }
+  ],
+  "floors": {
+    "setspr_sdc_kan": {
+      "floor_blocks": [
+        {
+          "block_id": "1776142091308",
+          "title": "Feeds",
+          "type": "1"
+        },
+        {
+          "block_id": "kan_local_notice",
+          "title": "Dept Circular",
+          "type": "9"
+        }
+      ],
+      "source": "floor_childblocks_stub"
+    },
+    "setspr_sdc_kan_venkaborao": {
+      "floor_blocks": [
+        {
+          "block_id": "1776142091308",
+          "title": "Feeds",
+          "type": "1"
+        },
+        {
+          "block_id": "faculty_local_notes",
+          "title": "My Notes",
+          "type": "7"
+        }
+      ],
+      "source": "floor_childblocks_stub"
+    }
+  },
+  "errors": []
+}

@@ -1,0 +1,42 @@
+{
+  "name": "root",
+  "children": [
+    {
+      "name": "setspr",
+      "id": "setspr",
+      "type": "private",
+      "title": "SETSPR",
+      "desc": "Main federation",
+      "floor_cat": "Institution Floor",
+      "phone": "9999999999",
+      "email": "info@example.org",
+      "children": [
+        {
+          "name": "kan",
+          "id": "setspr_sdc_kan",
+          "type": "private",
+          "title": "Department of Kannada",
+          "desc": "Department of Kannada",
+          "floor_cat": "Department Floor",
+          "phone": "8888888888",
+          "email": "kan@example.org",
+          "children": [
+            {
+              "name": "venkaborao",
+              "id": "setspr_sdc_kan_venkaborao",
+              "type": "private",
+              "title": "Dr Venkabo Rao M",
+              "desc": "Department of Kannada",
+              "floor_cat": "Lecturer Floor",
+              "phone": "7777777777",
+              "email": "venkabo.rao@example.org",
+              "children": [],
+              "FID": "1776143034000"
+            }
+          ],
+          "FID": "1776142728171"
+        }
+      ]
+    }
+  ]
+}
