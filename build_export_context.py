@@ -255,10 +255,11 @@ def build_export_context(
     global_blocks_raw: dict[str, Any],
     profile: dict[str, Any] | None,
     use_api: bool,
+    feeder_floor_id: str | None = None,
 ) -> tuple[dict[str, Any], int, int, int]:
     global_blocks = normalize_global_blocks(global_blocks_raw)
 
-    federation_id = resolve_federation_id(hierarchy)
+    federation_id = feeder_floor_id or resolve_federation_id(hierarchy)
 
     child_block_map, errors = resolve_child_block_map(feeder_id=federation_id, use_api=use_api)
     source_label = "floor_childblocks_api" if use_api and not errors else "floor_childblocks_stub"
