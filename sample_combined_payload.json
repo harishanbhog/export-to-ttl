@@ -1,0 +1,43 @@
+{
+  "hierarchy": {
+    "children": [
+      {
+        "id": "setspr_sdc_kan",
+        "title": "Karnataka SDC",
+        "type": "public",
+        "children": [
+          {
+            "id": "setspr_sdc_kan_venkaborao",
+            "title": "Venkaborao Dept",
+            "type": "private",
+            "children": []
+          }
+        ]
+      }
+    ]
+  },
+  "global_blocks": {
+    "blocks": [
+      {
+        "BID": "1776142091308",
+        "title": "Feeds",
+        "type": "1",
+        "display_child_floors": "1",
+        "default_block": "1",
+        "is_live_enabled": "1",
+        "analytics_enabled": "1",
+        "user_allowed_to_post": "0"
+      },
+      {
+        "BID": "1776142091309",
+        "title": "Members",
+        "type": "2",
+        "display_child_floors": "1",
+        "default_block": "0",
+        "is_live_enabled": "0",
+        "analytics_enabled": "1",
+        "user_allowed_to_post": "0"
+      }
+    ]
+  }
+}
