@@ -15,6 +15,17 @@ DEFAULT_BASE_URL = "https://floortv.in/api/memory/"
 
 
 def load_json(path: str) -> dict[str, Any]:
+    """Load and parse a JSON file as a dictionary.
+
+    Workflow note:
+    - Used by CLI and SSE orchestration paths to ingest hierarchy/global payloads.
+    - This function assumes top-level JSON object and lets exceptions bubble up
+      so callers can decide how to report parsing errors.
+
+    Example:
+    >>> load_json("sample_hierarchy.json")
+    {"children": [...]}  # simplified
+    """
     return json.loads(Path(path).read_text(encoding="utf-8"))
 
 
@@ -26,6 +37,19 @@ def load_profile(path: str | None) -> dict[str, Any] | None:
 
 
 def normalize_global_blocks(raw_blocks: dict[str, Any]) -> list[dict[str, Any]]:
+    """Normalize raw global block payload to exporter-friendly shape.
+
+    Workflow note:
+    - Input often comes from legacy payload (`BID`, string flags).
+    - Output guarantees `block_id` + known fields used by TTL serializer.
+    - Unknown fields are intentionally ignored here to keep context compact.
+
+    Example input:
+    {"blocks": [{"BID": "101", "title": "Feeds", "display_child_floors": "1"}]}
+
+    Example output:
+    [{"block_id": "101", "title": "Feeds", "display_child_floors": "1", ...}]
+    """
     normalized: list[dict[str, Any]] = []
     for block in raw_blocks.get("blocks", []) or []:
         if not isinstance(block, dict):
@@ -49,7 +73,17 @@ def normalize_global_blocks(raw_blocks: dict[str, Any]) -> list[dict[str, Any]]:
 
 
 def fetch_child_blocks_stub(base_url: str, token: str, hub_id: str) -> dict[str, list[dict[str, Any]]]:
-    """Stubbed child-blocks response. No API call is made in this MVP stage."""
+    """Return deterministic child-block data for offline/local workflows.
+
+    Workflow note:
+    - Used when `--use-api` is not enabled.
+    - Also used as exception fallback when live API call fails.
+    - Parameters are accepted for signature compatibility with future adapters.
+
+    Example:
+    >>> fetch_child_blocks_stub("", "", "setspr_sdc_kan")
+    {"setspr_sdc_kan": [...], "setspr_sdc_kan_venkaborao": [...]}
+    """
     return {
         "setspr_sdc_kan": [
             {"block_id": "1776142091308", "title": "Feeds", "type": "1"},
@@ -72,6 +106,18 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
     Supported response shapes:
     - {"list": [{"fed_path": "...", "blocks": [...]}, ...]}
     - {"data": {"list": [...]}}
+
+    Workflow note:
+    - `floor_id` is the feeder floor identifier provided by caller.
+    - Function normalizes blocks and returns a map:
+      `{ "<floor_id_from_api>": [<normalized blocks>] }`
+    - If API returns an empty list, this returns `{}` (no stub fallback here).
+      Stub fallback is handled only by exception in `resolve_child_block_map`.
+
+    Example normalized return:
+    {
+      "setspr_sdc_kan": [{"block_id": "1776142091308", "title": "Feeds", ...}]
+    }
     """
     try:
         import requests  # lazy import; only needed in --use-api mode
@@ -130,7 +176,17 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
 
 
 def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, str]]]:
-    """Use API when requested, otherwise stub; never raise."""
+    """Resolve child blocks from API or stub and never raise to caller.
+
+    Workflow note:
+    - `use_api=False` => direct stub map.
+    - `use_api=True` => try live API; on exception fallback to stub + error record.
+    - This function is the resilience boundary for context building.
+
+    Example:
+    >>> resolve_child_block_map("setspr_sdc_kan", use_api=False)
+    ({...stub map...}, [])
+    """
     if not use_api:
         return fetch_child_blocks_stub(base_url="", token="", hub_id=feeder_id), []
 
@@ -144,6 +200,15 @@ def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, li
 
 
 def collect_hierarchy_ids(hierarchy: dict[str, Any]) -> set[str]:
+    """Collect all floor IDs from hierarchy tree.
+
+    Workflow note:
+    - Hierarchy is treated as source-of-truth.
+    - Result is used to filter out any API floor keys that are unknown.
+
+    Example:
+    hierarchy children ids: A -> B -> C  => {"A", "B", "C"}
+    """
     ids: set[str] = set()
 
     def walk(node: dict[str, Any]) -> None:
@@ -234,6 +299,9 @@ def resolve_federation_id(hierarchy: dict[str, Any]) -> str:
     """Pick top meaningful federation floor id under root.
 
     If first child id looks like a root wrapper (e.g. root_*), prefer its first child id.
+
+    Example:
+    root_x -> setspr_sdc_kan -> ...  => returns "setspr_sdc_kan"
     """
     children = hierarchy.get("children", []) or []
     if not children or not isinstance(children[0], dict):
@@ -257,6 +325,28 @@ def build_export_context(
     use_api: bool,
     feeder_floor_id: str | None = None,
 ) -> tuple[dict[str, Any], int, int, int]:
+    """Compose final export context consumed by TTL serializer.
+
+    Workflow overview:
+    1. Normalize global blocks.
+    2. Resolve feeder floor id (`feeder_floor_id` override or hierarchy federation id).
+    3. Fetch child-block map (API/stub with resilience).
+    4. Filter floors using hierarchy IDs.
+    5. Assemble context envelope (`version`, `generated_at`, `profile`, `floors`, `errors`).
+
+    Args:
+    - hierarchy: full hierarchy JSON object.
+    - global_blocks_raw: source blocks payload (expects `blocks` list).
+    - profile: profile JSON (already fetched or optional).
+    - use_api: whether to call live child-block API.
+    - feeder_floor_id: optional override; useful for endpoint-style requests.
+
+    Returns:
+    - context dict
+    - discovered floor count
+    - API success count flag (0/1)
+    - API failure count
+    """
     global_blocks = normalize_global_blocks(global_blocks_raw)
 
     federation_id = feeder_floor_id or resolve_federation_id(hierarchy)

@@ -30,6 +30,13 @@ class ExportRequest:
 
 
 def sse_event(event: str, data: dict[str, Any]) -> str:
+    """Format one SSE event frame.
+
+    Example return:
+    event: progress
+    data: {"stage":"context_build","status":"started"}
+
+    """
     return f"event: {event}\ndata: {json.dumps(data)}\n\n"
 
 
@@ -37,6 +44,14 @@ def fetch_profile_from_redis_stub(profile_name: str) -> dict[str, Any]:
     """Stub for profile lookup from Redis.
 
     Replace with real Redis lookup in integration layer.
+
+    Workflow note:
+    - For local development, this attempts to load `sample_profile.json`.
+    - If sample isn't present, returns a minimal profile envelope.
+
+    Example integration replacement:
+    - GET redis key `profile:{profile_name}`
+    - JSON-decode into same shape returned here.
     """
     bundled = Path("sample_profile.json")
     if bundled.exists():
@@ -56,6 +71,23 @@ def fetch_profile_from_redis_stub(profile_name: str) -> dict[str, Any]:
 
 
 def stream_ttl_export(request: ExportRequest) -> Iterator[str]:
+    """Orchestrate one-call export and stream SSE progress updates.
+
+    End-to-end workflow:
+    1) Validate payload shape (`hierarchy`, `global_blocks`).
+    2) Fetch profile by name (stubbed Redis call).
+    3) Build export context using caller `floor_id`.
+    4) Serialize context to TTL (existing business logic).
+    5) Yield `complete` event with TTL payload.
+
+    This generator is intentionally FastAPI-friendly:
+    it can be returned via `StreamingResponse(..., media_type="text/event-stream")`.
+
+    Example:
+    >>> req = ExportRequest("setspr_sdc_kan", "campus", payload, use_api=False)
+    >>> for ev in stream_ttl_export(req):
+    ...     print(ev, end="")
+    """
     payload = request.payload if isinstance(request.payload, dict) else {}
     hierarchy = payload.get("hierarchy")
     global_blocks = payload.get("global_blocks")
@@ -114,6 +146,14 @@ def stream_ttl_export(request: ExportRequest) -> Iterator[str]:
 
 
 def parse_payload_arg(payload_arg: str) -> dict[str, Any]:
+    """Parse payload CLI arg as file-path or inline JSON object.
+
+    Example file mode:
+    --payload sample_combined_payload.json
+
+    Example inline mode:
+    --payload '{"hierarchy": {...}, "global_blocks": {...}}'
+    """
     payload_path = Path(payload_arg)
     if payload_path.exists():
         loaded = load_json(str(payload_path))
@@ -128,6 +168,10 @@ def parse_payload_arg(payload_arg: str) -> dict[str, Any]:
 
 
 def main() -> None:
+    """CLI entrypoint for local simulation of endpoint + SSE stream.
+
+    This command is for developer testing before FastAPI integration.
+    """
     parser = argparse.ArgumentParser(
         description="One-call SSE-like flow: floor_id + profile_name + payload(hierarchy/global_blocks) -> Turtle."
     )

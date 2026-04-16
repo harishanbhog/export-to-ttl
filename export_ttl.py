@@ -49,12 +49,31 @@ BASE_DATA_PROPERTIES = [
 
 
 def sanitize_fragment(value: str, fallback_prefix: str) -> str:
+    """Convert arbitrary text into a URI-safe fragment.
+
+    Workflow note:
+    - Used for floor/block URI fragment generation.
+    - Keeps alphanumerics, `_`, `-`; replaces everything else with `_`.
+
+    Example:
+    >>> sanitize_fragment("My Floor #1", "floor")
+    "My_Floor_1"
+    """
     cleaned = re.sub(r"[^A-Za-z0-9_-]", "_", (value or "").strip())
     cleaned = re.sub(r"_+", "_", cleaned).strip("_")
     return cleaned or f"{fallback_prefix}_unknown"
 
 
 def parse_flag_to_bool(value: Any) -> bool:
+    """Parse common truthy flag variants into bool.
+
+    Accepted truthy values include: 1, "1", "true", "yes", "y".
+    Everything else is False.
+
+    Example:
+    >>> parse_flag_to_bool("1")
+    True
+    """
     if isinstance(value, bool):
         return value
     if value is None:
@@ -63,6 +82,12 @@ def parse_flag_to_bool(value: Any) -> bool:
 
 
 def required_text(value: Any, fallback: str = "unknown") -> str:
+    """Return non-empty text or fallback.
+
+    Workflow note:
+    - Used when ontology expects required literals even if source is sparse
+      (e.g., phone/email/location fallback behavior in MVP).
+    """
     if value is None:
         return fallback
     text = str(value).strip()
@@ -70,6 +95,7 @@ def required_text(value: Any, fallback: str = "unknown") -> str:
 
 
 def add_optional_literal(graph: Graph, s: URIRef, p: URIRef, value: Any, datatype: URIRef | None = None) -> None:
+    """Add RDF literal triple only when value is present and non-empty."""
     if value is None:
         return
     if isinstance(value, str) and not value.strip():
@@ -78,6 +104,12 @@ def add_optional_literal(graph: Graph, s: URIRef, p: URIRef, value: Any, datatyp
 
 
 def resolve_curie(curie: str | None, prefix_map: dict[str, Namespace]) -> URIRef | None:
+    """Resolve CURIE (`prefix:local`) to URIRef using profile prefix map.
+
+    Example:
+    prefix_map["campus"] = Namespace("https://example/campus#")
+    resolve_curie("campus:FacultyFloor", prefix_map) -> URIRef(...)
+    """
     if not curie or ":" not in curie:
         return None
     prefix, local = curie.split(":", 1)
@@ -88,6 +120,12 @@ def resolve_curie(curie: str | None, prefix_map: dict[str, Namespace]) -> URIRef
 
 
 def add_base_schema_declarations(graph: Graph) -> None:
+    """Declare ontology + core classes/properties used by MVP exporter.
+
+    Workflow note:
+    - Called exactly once during serialization startup.
+    - Ensures output TTL is self-describing for baseline xFloor concepts.
+    """
     ontology = URIRef("https://xfloor.ai/ontology")
     graph.add((ontology, RDF.type, OWL.Ontology))
     graph.add((ontology, RDFS.label, Literal("xFloor MVP Ontology Export")))
@@ -101,6 +139,23 @@ def add_base_schema_declarations(graph: Graph) -> None:
 
 
 def serialize_context_to_ttl(context: dict[str, Any]) -> tuple[Graph, int, int, URIRef | None, URIRef | None, URIRef | None]:
+    """Convert composed export context into RDF graph.
+
+    Workflow overview:
+    1. Bind namespaces + optional profile namespace.
+    2. Walk hierarchy tree and emit floor entities/relations.
+    3. Emit global blocks and attach to root hub.
+    4. Emit per-floor effective blocks (global/local links).
+    5. Return graph + summary pointers for CLI diagnostics.
+
+    The business logic in this function is used by both:
+    - `export_ttl.py` CLI (two-step flow), and
+    - `sse_export_service.py` (single-call SSE flow).
+
+    Example:
+    >>> graph, floors, globals_count, *_ = serialize_context_to_ttl(context)
+    >>> ttl = graph.serialize(format="turtle")
+    """
     hierarchy = context.get("hierarchy", {}) if isinstance(context.get("hierarchy"), dict) else {}
     floor_map = context.get("floors", {}) if isinstance(context.get("floors"), dict) else {}
     global_blocks = context.get("global_blocks", []) if isinstance(context.get("global_blocks"), list) else []
