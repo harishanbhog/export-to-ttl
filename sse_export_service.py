@@ -77,7 +77,7 @@ def stream_ttl_export(request: ExportRequest) -> Iterator[str]:
     End-to-end workflow:
     1) Validate payload shape (`hierarchy`, `global_blocks`).
     2) Fetch profile by name (stubbed Redis call).
-    3) Build export context using caller `floor_id`.
+    3) Build export context using caller `floor_id` (API only).
     4) Serialize context to TTL (existing business logic).
     5) Write TTL to output file and log file path.
     6) Yield `complete` event with TTL payload.
@@ -196,7 +196,6 @@ def main() -> None:
         required=True,
         help='JSON object string OR file path with {"hierarchy": {...}, "global_blocks": {...}}',
     )
-    parser.add_argument("--no-api", action="store_true", help="Use stub child-block provider instead of API.")
     parser.add_argument("--ttl-out", default="generated_output.ttl", help="Path to write generated Turtle output.")
     args = parser.parse_args()
 
@@ -205,7 +204,7 @@ def main() -> None:
         floor_id=args.floor_id,
         profile_name=args.profile_name,
         payload=payload,
-        use_api=not args.no_api,
+        use_api=True,
         ttl_out=args.ttl_out,
     )
 

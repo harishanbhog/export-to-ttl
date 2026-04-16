@@ -14,7 +14,7 @@ It also now includes a **single-call orchestration flow** (CLI simulation of a F
 ## Requirements
 - Python 3.11+
 - `rdflib`
-- `requests` (needed only for `--use-api` mode)
+- `requests` (required; child blocks are API-only now)
 
 ## Step 1: Build export context
 
@@ -26,25 +26,15 @@ python build_export_context.py \
   --out sample_export_context.json
 ```
 
-Optional real API mode:
-```bash
-python build_export_context.py \
-  --hierarchy sample_hierarchy.json \
-  --global-blocks sample_global_blocks.json \
-  --profile sample_profile.json \
-  --out sample_export_context.json \
-  --use-api
-```
-
 ### Child blocks API handler
 
-When `--use-api` is enabled, builder calls:
+Builder calls:
 
 `https://floortv.in/api/memory/floor/child/blocks/{floor_id}?user_id=<USER_ID>&app_id=<APP_ID>`
 
 - `floor_id` comes from hierarchy federation/root node.
 - `user_id` and `app_id` are loaded from `.env` / environment.
-- if API fails, builder falls back to local stub and logs an error entry.
+- if API fails, builder returns an error entry and no stub fallback is used.
 
 Supported API response format includes:
 - `{ "list": [{"fed_path": "...", "blocks": [...]}, ...] }`
@@ -53,7 +43,7 @@ All block properties from API are retained in context `floor_blocks`.
 
 ### Environment /.env values
 
-Required for `--use-api`:
+Required:
 - `USER_ID` (or `XFLOOR_USER_ID`)
 - `APP_ID` (or `XFLOOR_APP_ID`)
 
@@ -101,7 +91,7 @@ Inputs:
 1. Emits SSE progress: `profile_lookup started`
 2. Fetches profile by `profile_name` via Redis stub (`fetch_profile_from_redis_stub`)
 3. Emits SSE progress: `context_build started`
-4. Calls the existing context builder with provided `floor_id` (API/stub behavior unchanged)
+4. Calls the existing context builder with provided `floor_id` (API-only behavior)
 5. Emits SSE progress: `context_build completed`
 6. Emits SSE progress: `ttl_export started`
 7. Calls existing TTL serializer (business logic unchanged)
@@ -127,8 +117,7 @@ python sse_export_service.py \
   --floor-id setspr_sdc_kan \
   --profile-name campus \
   --payload sample_combined_payload.json \
-  --ttl-out /tmp/generated_output.ttl \
-  --no-api
+  --ttl-out /tmp/generated_output.ttl
 ```
 
 The command writes TTL to the file passed in `--ttl-out` and logs:
@@ -159,13 +148,12 @@ python sse_export_service.py \
   --floor-id setspr_sdc_kan \
   --profile-name campus \
   --payload '{"hierarchy": {...}, "global_blocks": {"blocks": [...]}}' \
-  --ttl-out /tmp/generated_output.ttl \
-  --no-api
+  --ttl-out /tmp/generated_output.ttl
 ```
 
 ### API mode notes
 
-To run with live API (omit `--no-api`), ensure `.env` / environment has:
+This flow is API-only. Ensure `.env` / environment has:
 - `USER_ID` (or `XFLOOR_USER_ID`)
 - `APP_ID` (or `XFLOOR_APP_ID`)
 
@@ -178,7 +166,6 @@ Optional:
 In your FastAPI server, map your endpoint to call `stream_ttl_export(...)` and return it through `StreamingResponse` with media type `text/event-stream`.
 
 ## Notes
-- Stub mode remains default for offline runs.
 - This is MVP behavior; inheritance/local semantics are still approximated.
 
 

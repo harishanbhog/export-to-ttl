@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build ontology_export_context.json from hierarchy + global blocks + stubbed child-block map."""
+"""Build ontology_export_context.json from hierarchy + global blocks + API child-block map."""
 
 from __future__ import annotations
 
@@ -76,8 +76,8 @@ def fetch_child_blocks_stub(base_url: str, token: str, hub_id: str) -> dict[str,
     """Return deterministic child-block data for offline/local workflows.
 
     Workflow note:
-    - Used when `--use-api` is not enabled.
-    - Also used as exception fallback when live API call fails.
+    - Stub mode is disabled in current flow.
+    - Kept only as a reference fixture for developers.
     - Parameters are accepted for signature compatibility with future adapters.
 
     Example:
@@ -111,8 +111,7 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
     - `floor_id` is the feeder floor identifier provided by caller.
     - Function normalizes blocks and returns a map:
       `{ "<floor_id_from_api>": [<normalized blocks>] }`
-    - If API returns an empty list, this returns `{}` (no stub fallback here).
-      Stub fallback is handled only by exception in `resolve_child_block_map`.
+    - If API returns an empty list, this returns `{}`.
 
     Example normalized return:
     {
@@ -120,9 +119,9 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
     }
     """
     try:
-        import requests  # lazy import; only needed in --use-api mode
+        import requests  # lazy import for runtime environments
     except ModuleNotFoundError as exc:
-        raise RuntimeError("requests is required only for --use-api mode") from exc
+        raise RuntimeError("requests is required for child-block API mode") from exc
 
     api = resolve_api_settings()
     base_url = api["base_url"].rstrip("/") + "/"
@@ -176,25 +175,26 @@ def fetch_child_blocks_api(floor_id: str, timeout: int = 15) -> dict[str, list[d
 
 
 def resolve_child_block_map(feeder_id: str, use_api: bool) -> tuple[dict[str, list[dict[str, Any]]], list[dict[str, str]]]:
-    """Resolve child blocks from API or stub and never raise to caller.
+    """Resolve child blocks from API only and never raise to caller.
 
     Workflow note:
-    - `use_api=False` => direct stub map.
-    - `use_api=True` => try live API; on exception fallback to stub + error record.
+    - Stub mode is disabled by request.
+    - This function always attempts live API.
+    - On exception it returns empty map + error record (no stub fallback).
     - This function is the resilience boundary for context building.
 
     Example:
     >>> resolve_child_block_map("setspr_sdc_kan", use_api=False)
-    ({...stub map...}, [])
+    ({}, [{"floor_id": "...", "error": "..."}])  # when API fails
     """
     if not use_api:
-        return fetch_child_blocks_stub(base_url="", token="", hub_id=feeder_id), []
+        print("[childblocks] stub mode disabled; forcing API call")
 
     try:
         return fetch_child_blocks_api(floor_id=feeder_id), []
     except Exception as exc:  # noqa: BLE001
-        return fetch_child_blocks_stub(base_url="", token="", hub_id=feeder_id), [
-            {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed, stub fallback used: {exc}"}
+        return {}, [
+            {"floor_id": feeder_id or "unknown", "error": f"child blocks API failed; no stub fallback: {exc}"}
         ]
 
 
@@ -230,7 +230,7 @@ def build_floors_from_api_map(
     source_label: str,
     hierarchy_ids: set[str],
 ) -> tuple[dict[str, dict[str, Any]], int]:
-    """Build floors section using only floors returned by API/stub map.
+    """Build floors section using only floors returned by API map.
 
     Per request, include only floors that actually appear in child-blocks response.
     Ignore any floor ids that are not present in hierarchy (hierarchy is source of truth).
@@ -330,7 +330,7 @@ def build_export_context(
     Workflow overview:
     1. Normalize global blocks.
     2. Resolve feeder floor id (`feeder_floor_id` override or hierarchy federation id).
-    3. Fetch child-block map (API/stub with resilience).
+    3. Fetch child-block map (API with resilience).
     4. Filter floors using hierarchy IDs.
     5. Assemble context envelope (`version`, `generated_at`, `profile`, `floors`, `errors`).
 
@@ -352,7 +352,7 @@ def build_export_context(
     federation_id = feeder_floor_id or resolve_federation_id(hierarchy)
 
     child_block_map, errors = resolve_child_block_map(feeder_id=federation_id, use_api=use_api)
-    source_label = "floor_childblocks_api" if use_api and not errors else "floor_childblocks_stub"
+    source_label = "floor_childblocks_api"
     hierarchy_ids = collect_hierarchy_ids(hierarchy)
     floors, discovered = build_floors_from_api_map(child_block_map, source_label=source_label, hierarchy_ids=hierarchy_ids)
 
@@ -370,18 +370,17 @@ def build_export_context(
         "errors": errors,
     }
     print(f"[childblocks] mapped floors from provider: {len(child_block_map)}")
-    api_success = 1 if use_api and not errors else 0 if use_api else 1
+    api_success = 1 if not errors else 0
     api_failed = len(errors)
     return context, discovered, api_success, api_failed
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build ontology export context from hierarchy + global blocks + stubbed childblocks map.")
+    parser = argparse.ArgumentParser(description="Build ontology export context from hierarchy + global blocks using API childblocks map.")
     parser.add_argument("--hierarchy", required=True, help="Path to hierarchy JSON.")
     parser.add_argument("--global-blocks", required=True, help="Path to global blocks JSON.")
     parser.add_argument("--profile", required=False, help="Optional profile JSON path.")
     parser.add_argument("--out", required=True, help="Output context JSON path.")
-    parser.add_argument("--use-api", action="store_true", help="Call real child-blocks API handler. Default uses stub.")
     args = parser.parse_args()
 
     hierarchy = load_json(args.hierarchy)
@@ -392,14 +391,13 @@ def main() -> None:
         hierarchy=hierarchy,
         global_blocks_raw=global_blocks_raw,
         profile=profile,
-        use_api=args.use_api,
+        use_api=True,
     )
 
     Path(args.out).write_text(json.dumps(context, indent=2), encoding="utf-8")
 
     print(f"Floors discovered: {discovered}")
-    mode = "api" if args.use_api else "stub"
-    print(f"Childblocks API succeeded: {succeeded} ({mode} mode)")
+    print(f"Childblocks API succeeded: {succeeded} (api mode)")
     print(f"Childblocks API failed: {failed}")
     print(f"Wrote context: {args.out}")
 
